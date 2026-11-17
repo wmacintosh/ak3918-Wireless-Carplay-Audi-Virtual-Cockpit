@@ -15,7 +15,7 @@ I tested this on my 2018 Audi A5 with a Harman MHI2Q head unit. The MMI software
 
 ## Install
 
-Download [ak3918-ready-to-flash.zip](./ak3918-ready-to-flash.zip) and unzip it. It has the Python installer and both firmware files. With the car parked, keep the dongle powered and your computer on the dongle’s Wi-Fi. Open Terminal in the extracted folder and run:
+Download [ak3918-ready-to-flash.zip](./ak3918-ready-to-flash.zip) and unzip it. It has the Python installer and both firmware files. With the car parked, keep the dongle powered and your computer on the dongle’s `SmartBox_XXXX` Wi-Fi. If prompted, enter the Wi-Fi password supplied with your dongle. Open Terminal in the extracted folder and run:
 
 ```sh
 python3 flash_ak.py
