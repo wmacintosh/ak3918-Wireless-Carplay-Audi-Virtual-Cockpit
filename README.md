@@ -15,21 +15,34 @@ I tested this on my 2018 Audi A5 with a Harman MHI2Q head unit. The MMI software
 
 ## Install
 
-Download [ak3918-ready-to-flash.zip](./ak3918-ready-to-flash.zip) and unzip it. It has the Python installer and both firmware files. With the car parked, keep the dongle powered and your computer on the dongle’s `SmartBox_XXXX` Wi-Fi. If prompted, enter the Wi-Fi password supplied with your dongle. Open Terminal in the extracted folder and run:
+Download [ak3918-ready-to-flash.zip](./ak3918-ready-to-flash.zip) and unzip it. It has the Python installer and both firmware files. With the car parked, keep the dongle powered and your computer on the dongle’s `SmartBox_XXXX` Wi-Fi. If prompted, enter the Wi-Fi password supplied with your dongle. Install Python 3 before switching to the dongle’s Wi-Fi if you don’t already have it. [Python downloads](https://www.python.org/downloads/)
+
+### macOS
+
+Open Terminal. Type `cd ` with a space after it, drag the extracted folder from Finder into Terminal, and press Return. Then run:
 
 ```sh
 python3 flash_ak.py
 ```
 
+### Windows
+
+Open the extracted folder in File Explorer. Click the address bar, type `cmd`, and press Enter. Then run:
+
+```bat
+py -3 flash_ak.py
+```
+
+If Windows doesn’t recognize `py`, try `python flash_ak.py` with Python 3 installed.
+
 Check the device it reports and type `yes`. Let it reboot, reconnect your iPhone, start navigation, and switch the Virtual Cockpit to the map.
 
 ## Back to stock
 
-Connect to the dongle’s Wi-Fi and run this from the same folder:
+Connect to the dongle’s Wi-Fi and run the command for your computer from the same folder:
 
-```sh
-python3 flash_ak.py --stock
-```
+- **macOS:** `python3 flash_ak.py --stock`
+- **Windows:** `py -3 flash_ak.py --stock` (or `python flash_ak.py --stock` if you used `python` to install)
 
 Type `yes` and leave it powered through the reboot. The installer uses `stock_ak_202610081659.tar`. `SHA256SUMS` lists the checksums for that file and the patched `ak_hook.tar`.
 
