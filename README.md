@@ -4,6 +4,10 @@ I ordered a dongle to try [OMKE’s wireless CarPlay mod](https://github.com/OMK
 
 The first builds kept dropping CarPlay. With the build in this repo, the MMI stayed connected and navigation showed up on the Virtual Cockpit. I’ve tested it on my own setup.
 
+## My setup
+
+I tested this on my 2018 Audi A5 with a Harman MHI2Q head unit. The MMI software train is `MHI2Q_US_AUG22_P5087` (`MU1316`). I already had the LukaDev Virtual Cockpit mod working over wired CarPlay before testing the Suding AK3918AN dongle.
+
 ## Before you flash
 
 - Plug your iPhone directly into the Audi first. If the map doesn’t show up in the Virtual Cockpit over USB, get that working before trying the dongle.
