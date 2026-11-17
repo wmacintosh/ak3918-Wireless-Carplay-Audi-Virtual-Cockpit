@@ -46,4 +46,4 @@ Connect to the dongle’s Wi-Fi and run the command for your computer from the s
 
 Type `yes` and leave it powered through the reboot. The installer uses `stock_ak_202610081659.tar`. `SHA256SUMS` lists the checksums for that file and the patched `ak_hook.tar`.
 
-Thanks to OMKE for sharing the patch and the research behind it, and to LukaDev for the Audi-side mod I used.
+Thanks to [OMKE](https://github.com) for sharing the patch and the research behind it, and to [luka-dev](https://github.com) for the Audi-side mod I used.
