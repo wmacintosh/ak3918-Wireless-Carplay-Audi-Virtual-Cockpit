@@ -196,12 +196,35 @@ static int has_idr(const unsigned char *b, unsigned len) {
 }
 
 static void *g_cluster_ctx;
+/* Guards the cluster startup state and publishes the active relay context. */
+static pthread_mutex_t g_state_lock = PTHREAD_MUTEX_INITIALIZER;
 static int g_cluster_started;
 static int g_push_enabled = 1;
 static void *g_session;
+static unsigned g_session_generation;
 static unsigned long long g_conn111;
 static int g_have_conn111;
 static void *cluster_setup_to_car(void *);
+
+static int cluster_claim_start(void) {
+    int claimed = 0;
+    pthread_mutex_lock(&g_state_lock);
+    if (!g_cluster_started) { g_cluster_started = 1; claimed = 1; }
+    pthread_mutex_unlock(&g_state_lock);
+    return claimed;
+}
+static void cluster_start_failed(void) {
+    pthread_mutex_lock(&g_state_lock);
+    g_cluster_started = 0;
+    pthread_mutex_unlock(&g_state_lock);
+}
+static void *cluster_context_snapshot(void) {
+    void *ctx;
+    pthread_mutex_lock(&g_state_lock);
+    ctx = g_cluster_ctx;
+    pthread_mutex_unlock(&g_state_lock);
+    return ctx;
+}
 
 /* Preserve errno and keep concurrent checkpoint lines together with one append. */
 static void dbg(const char *msg, int n) {
@@ -231,7 +254,8 @@ static int writeall(int fd, const void *buf, int n) {
 
 static int send_to_car(int type, unsigned char *body, unsigned len,
                        const char **failed_stage) {
-    char *ctx = (char *)g_cluster_ctx;
+    char *ctx = (char *)cluster_context_snapshot();
+    if (!ctx || !failed_stage) { errno = EINVAL; return -1; }
     unsigned char hdr[128];
     memset(hdr, 0, sizeof hdr);
     *(unsigned *)hdr = len;
@@ -244,6 +268,7 @@ static int send_to_car(int type, unsigned char *body, unsigned len,
         *(uint32_t *)(hdr + 0x2c) = (CLUSTER_H == 542) ? 0x44078000u : 0x44070000u;
     }
     pthread_mutex_t *mu = *(pthread_mutex_t **)(ctx + 0x4c);
+    if (!mu) { errno = EINVAL; return -1; }
     pthread_mutex_lock(mu);
     if (type == 0) aesctr_update(ctx + 0x168, body, (int)len, body);
     int fd = *(int *)ctx;
@@ -275,8 +300,15 @@ static int readn(int fd, void *buf, int n) {
     return 0;
 }
 
+struct sink_args { int srv; void *session; uint64_t connid; int have_connid; unsigned generation; };
+
 static void *sink_thread(void *arg) {
-    int srv = (int)(intptr_t)arg;
+    struct sink_args snapshot = *(struct sink_args *)arg;
+    free(arg);
+    int srv = snapshot.srv;
+    void *session = snapshot.session;
+    uint64_t connid = snapshot.connid;
+    int have_connid = snapshot.have_connid;
     dbg("alt sink thread up", -1);
     dbg("sink accept begin", 0);
     int c = accept(srv, 0, 0);
@@ -286,7 +318,7 @@ static void *sink_thread(void *arg) {
     dbg("alt connected", -1);
     {
         dbg("sink showUI begin", 0);
-        int sr = send_phone_cmd(g_session, "showUI", 1);
+        int sr = send_phone_cmd(session, "showUI", 1);
         dbg("alt showUI err", sr);
     }
 
@@ -294,28 +326,28 @@ static void *sink_thread(void *arg) {
     unsigned char cctx[0x200] __attribute__((aligned(8)));
     unsigned char cckey[32], ccnonce[8];
     int dec_ready = 0, chacha = 0;
-    dbg("sink pairVerify lookup begin", g_session != 0);
-    void *pvs = g_session ? *(void **)((char *)g_session + 0x3ec) : 0;
+    dbg("sink pairVerify lookup begin", session != 0);
+    void *pvs = session ? *(void **)((char *)session + 0x3ec) : 0;
     dbg("alt pairVerifySession set", pvs ? 1 : 0);
-    if (pvs && g_have_conn111 && g_conn111 != 0) {
+    if (pvs && have_connid && connid != 0) {
         dbg("sink key setup begin", 0);
-        int rc = get_stream_keys((char *)g_session + 0x3ec, 0, (uint64_t)g_conn111, 0, 0, cckey);
+        int rc = get_stream_keys((char *)session + 0x3ec, 0, connid, 0, 0, cckey);
         dbg("alt chacha keys rc", rc);
         if (rc == 0) {
             memset(ccnonce, 0, sizeof ccnonce);
             dec_ready = 1;
             chacha = 1;
         }
-    } else if (g_have_conn111 && g_session && g_conn111 != 0) {
+    } else if (have_connid && session && connid != 0) {
         unsigned char key[16], iv[16];
         dbg("sink legacy derive begin", 0);
-        derive_screen((char *)g_session + 0x200, 0x10, (uint64_t)g_conn111, key, iv);
+        derive_screen((char *)session + 0x200, 0x10, connid, key, iv);
         dbg("sink legacy cipher init begin", 0);
         aesctr_init(dctx, key, iv);
         dec_ready = 1;
         dbg("alt decrypt ready", -1);
     } else {
-        dbg("alt no connID", g_have_conn111);
+        dbg("alt no connID", have_connid);
     }
 
     unsigned char hdr[128];
@@ -379,17 +411,22 @@ static void *sink_thread(void *arg) {
                 bodylen -= 16;
             } else if (dec_ready) aesctr_update(dctx, body, bodylen, body);
             if (trace_video) dbg("sink video processing complete bytes", (int)bodylen);
-            if (dec_ready && g_cluster_ctx && g_push_enabled && cfg_body) {
+            if (dec_ready && cluster_context_snapshot() && g_push_enabled && cfg_body) {
                 if (!cfg_sent) {
-                    if (send_to_car(1, cfg_body, cfg_len, &failed_stage) == 0) dbg("alt config sent late", (int)cfg_len);
-                    cfg_sent = 1;
-                    got_idr = 0;
-                    wait_idr = 0;
+                    if (send_to_car(1, cfg_body, cfg_len, &failed_stage) == 0) {
+                        dbg("alt config sent late", (int)cfg_len);
+                        cfg_sent = 1;
+                        got_idr = 0;
+                        wait_idr = 0;
+                    } else {
+                        dbg(failed_stage, errno);
+                        break;
+                    }
                 }
                 if (!got_idr && has_idr(body, bodylen)) { got_idr = 1; dbg("alt idr after frames", wait_idr); }
                 if (!got_idr) {
                     if ((wait_idr++ % 120) == 0) {
-                        int kr = send_phone_cmd(g_session, "forceKeyFrame", 0);
+                        int kr = send_phone_cmd(session, "forceKeyFrame", 0);
                         dbg("alt force keyframe err", kr < 0 ? -kr : kr);
                     }
                     continue;
@@ -413,11 +450,17 @@ static void *sink_thread(void *arg) {
                 cfg_sent = 0;
             }
             if (trace_config) dbg("sink config buffer ready", cfg_body != 0);
-            if (cfg_body && g_cluster_ctx && g_push_enabled) {
-                if (send_to_car(1, cfg_body, cfg_len, &failed_stage) == 0) { pushed++; dbg("alt config sent", (int)cfg_len); }
-                cfg_sent = 1;
-                got_idr = 0;
-                wait_idr = 0;
+            if (cfg_body && cluster_context_snapshot() && g_push_enabled) {
+                if (send_to_car(1, cfg_body, cfg_len, &failed_stage) == 0) {
+                    pushed++;
+                    dbg("alt config sent", (int)cfg_len);
+                    cfg_sent = 1;
+                    got_idr = 0;
+                    wait_idr = 0;
+                } else {
+                    dbg(failed_stage, errno);
+                    break;
+                }
             }
         }
         if ((frames % 300) == 0) dbg("alt frames pushed", (int)pushed);
@@ -439,11 +482,20 @@ static int open_alt_sink(void *session) {
     if (rc != 0 || fd < 0) { dbg("alt ServerSocketOpen rc", rc); return 0; }
     int fl = fcntl(fd, F_GETFL, 0);
     if (fl != -1) fcntl(fd, F_SETFL, fl & ~O_NONBLOCK);
+    struct sink_args *args = (struct sink_args *)malloc(sizeof(*args));
+    if (!args) { close(fd); dbg("sink args malloc fail", -1); return 0; }
+    pthread_mutex_lock(&g_state_lock);
+    args->srv = fd;
+    args->session = session;
+    args->connid = g_conn111;
+    args->have_connid = g_have_conn111;
+    args->generation = g_session_generation;
+    pthread_mutex_unlock(&g_state_lock);
     pthread_t t;
     dbg("sink thread create begin", 0);
-    int thread_rc = pthread_create(&t, 0, sink_thread, (void *)(intptr_t)fd);
+    int thread_rc = pthread_create(&t, 0, sink_thread, args);
     dbg("sink thread create rc", thread_rc);
-    if (thread_rc != 0) { close(fd); return 0; }
+    if (thread_rc != 0) { free(args); close(fd); return 0; }
     pthread_detach(t);
     return port;
 }
@@ -493,8 +545,10 @@ static int filter_streams_in_place(void *req) {
         dbg("req replacement array install begin", 0);
         cf_dict_set_value(req, KEY_STREAMS, keep);
         dbg("req replacement array install complete", 0);
+        pthread_mutex_lock(&g_state_lock);
         g_conn111 = conn111;
-        g_have_conn111 = 1;
+        g_have_conn111 = conn111 != 0;
+        pthread_mutex_unlock(&g_state_lock);
     }
     dbg("req replacement array release begin", 0);
     cf_release(keep);
@@ -505,7 +559,14 @@ static int filter_streams_in_place(void *req) {
 int shim_session_setup(void *session, void *req, void **resp_out) {
     dbg("setup enter session present", session != 0);
     dbg("setup request present", req != 0);
+    pthread_mutex_lock(&g_state_lock);
+    if (g_session != session) {
+        g_session_generation++;
+        g_conn111 = 0;
+        g_have_conn111 = 0;
+    }
     g_session = session;
+    pthread_mutex_unlock(&g_state_lock);
     int had_alt = filter_streams_in_place(req);
     dbg("setup original begin had alt", had_alt);
     int rc = orig_setup(session, req, resp_out);
@@ -533,13 +594,13 @@ int shim_session_setup(void *session, void *req, void **resp_out) {
     dbg("setup response entry release begin", 0);
     cf_release(entry);
     dbg("alt dataPort", port);
-    if (!g_cluster_started) {
-        g_cluster_started = 1;
+    if (cluster_claim_start()) {
         pthread_t ct;
         dbg("setup cluster thread create begin", 0);
         int thread_rc = pthread_create(&ct, 0, cluster_setup_to_car, 0);
         dbg("setup cluster thread create rc", thread_rc);
         if (thread_rc == 0) pthread_detach(ct);
+        else cluster_start_failed();
     }
     dbg("setup complete rc", rc);
     return rc;
@@ -547,10 +608,14 @@ int shim_session_setup(void *session, void *req, void **resp_out) {
 
 static void cluster_response_cb(void *msg) {
     dbg("cluster response enter", 0);
+    if (!msg) { dbg("cluster response null message", -1); return; }
     int len = *(int *)((char *)msg + 0x4a0);
     dbg("cluster response bytes", len);
     void *bodyp = *(void **)((char *)msg + 0x49c);
-    if (len == 0) return;
+    if (len <= 0 || len > 4000000 || !bodyp) {
+        dbg("cluster response invalid body", len);
+        return;
+    }
     int err = 0;
     dbg("cluster response plist read begin", 0);
     void *d = cf_plist_read(bodyp, len, &err);
@@ -574,10 +639,16 @@ static void cluster_response_cb(void *msg) {
                     dbg("cluster response port lookup begin", 0);
                     int dp = (int)cf_dict_get_int64(sd, K_DATAPORT, 0);
                     void *ctx = *(void **)((char *)msg + 0x8fc);
+                    if (!ctx || dp <= 0 || dp > 65535) {
+                        dbg("cluster response invalid context or port", dp);
+                        break;
+                    }
+                    void *sem = *(void **)((char *)ctx + 0x30);
+                    if (!sem) { dbg("cluster response null semaphore", -1); break; }
                     *(int *)((char *)ctx + 4) = dp;
                     dbg("cluster car dataPort", dp);
                     dbg("cluster response signal begin", 0);
-                    d_sem_signal(*(void **)((char *)ctx + 0x30));
+                    d_sem_signal(sem);
                     dbg("cluster response signal complete", 0);
                     break;
                 }
@@ -657,6 +728,7 @@ static void *cluster_setup_to_car(void *unused) {
     dbg("cluster SETUP send begin", 0);
     int send_rc = http_send(*GAIRPLAYCLIENT, msg);
     dbg("cluster SETUP send rc", send_rc);
+    if (send_rc != 0) { dbg("cluster SETUP dispatch failed", send_rc); cluster_start_failed(); return 0; }
     dbg("cluster SETUP wait begin", 0);
     d_sem_wait(sem, ~0ull);
     dbg("cluster SETUP replied", -1);
@@ -693,7 +765,9 @@ static void *cluster_setup_to_car(void *unused) {
 
     *(int *)(ctx + 0xc) = 1;
     *(int *)(ctx + 0) = fd;
+    pthread_mutex_lock(&g_state_lock);
     g_cluster_ctx = ctx;
+    pthread_mutex_unlock(&g_state_lock);
     dbg("cluster ctx ready", -1);
     return 0;
 }
