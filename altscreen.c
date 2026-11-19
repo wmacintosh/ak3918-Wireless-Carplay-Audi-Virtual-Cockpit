@@ -189,7 +189,7 @@ static int has_idr(const unsigned char *b, unsigned len) {
     while (pos + 5 <= len) {
         unsigned nlen = (b[pos] << 24) | (b[pos + 1] << 16) | (b[pos + 2] << 8) | b[pos + 3];
         if ((b[pos + 4] & 0x1f) == 5) return 1;
-        if (nlen == 0 || pos + 4 + nlen > len) break;
+        if (nlen == 0 || nlen > len - pos - 4) break;
         pos += 4 + nlen;
     }
     return 0;
@@ -210,6 +210,13 @@ static int session_is_current(void *session, unsigned generation) {
     int current;
     pthread_mutex_lock(&g_state_lock);
     current = session && g_session == session && g_session_generation == generation;
+    pthread_mutex_unlock(&g_state_lock);
+    return current;
+}
+static int generation_is_current(unsigned generation) {
+    int current;
+    pthread_mutex_lock(&g_state_lock);
+    current = generation == g_session_generation;
     pthread_mutex_unlock(&g_state_lock);
     return current;
 }
@@ -697,7 +704,7 @@ static void cluster_response_cb(void *msg) {
 static void *cluster_setup_to_car(void *arg) {
     unsigned generation = *(unsigned *)arg;
     free(arg);
-    if (!session_is_current(g_session, generation)) {
+    if (!generation_is_current(generation)) {
         dbg("cluster setup stale generation", -1);
         return 0;
     }
@@ -778,7 +785,7 @@ static void *cluster_setup_to_car(void *arg) {
     dbg("cluster SETUP wait begin", 0);
     d_sem_wait(sem, ~0ull);
     dbg("cluster SETUP replied", -1);
-    if (!session_is_current(g_session, generation)) {
+    if (!generation_is_current(generation)) {
         dbg("cluster response from stale generation", -1);
         return 0;
     }
