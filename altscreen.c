@@ -206,16 +206,26 @@ static unsigned long long g_conn111;
 static int g_have_conn111;
 static void *cluster_setup_to_car(void *);
 
-static int cluster_claim_start(void) {
+static int session_is_current(void *session, unsigned generation) {
+    int current;
+    pthread_mutex_lock(&g_state_lock);
+    current = session && g_session == session && g_session_generation == generation;
+    pthread_mutex_unlock(&g_state_lock);
+    return current;
+}
+static int cluster_claim_start(unsigned generation) {
     int claimed = 0;
     pthread_mutex_lock(&g_state_lock);
-    if (!g_cluster_started) { g_cluster_started = 1; claimed = 1; }
+    if (generation == g_session_generation && !g_cluster_started) {
+        g_cluster_started = 1;
+        claimed = 1;
+    }
     pthread_mutex_unlock(&g_state_lock);
     return claimed;
 }
-static void cluster_start_failed(void) {
+static void cluster_start_failed(unsigned generation) {
     pthread_mutex_lock(&g_state_lock);
-    g_cluster_started = 0;
+    if (generation == g_session_generation) g_cluster_started = 0;
     pthread_mutex_unlock(&g_state_lock);
 }
 static void *cluster_context_snapshot(void) {
@@ -316,6 +326,11 @@ static void *sink_thread(void *arg) {
     close(srv);
     if (c < 0) { dbg("alt accept fail", -1); return 0; }
     dbg("alt connected", -1);
+    if (!session_is_current(session, snapshot.generation)) {
+        dbg("sink stale session before showUI", -1);
+        close(c);
+        return 0;
+    }
     {
         dbg("sink showUI begin", 0);
         int sr = send_phone_cmd(session, "showUI", 1);
@@ -361,6 +376,10 @@ static void *sink_thread(void *arg) {
     int cfg_sent = 0, got_idr = 0, wait_idr = 0, send_failed = 0;
     dbg("sink first header read begin", 0);
     for (;;) {
+        if (!session_is_current(session, snapshot.generation)) {
+            dbg("sink session changed", -1);
+            break;
+        }
         if (readn(c, hdr, 128) != 0) {
             dbg("sink header read ended", (int)frames);
             break;
@@ -384,6 +403,10 @@ static void *sink_thread(void *arg) {
             break;
         }
         if (trace_frame) dbg("sink payload read complete type", ftype);
+        if (!session_is_current(session, snapshot.generation)) {
+            dbg("sink session changed after read", -1);
+            break;
+        }
         if (ftype == 0) {
             int trace_video = videos_logged < 2;
             if (trace_video) {
@@ -559,13 +582,19 @@ static int filter_streams_in_place(void *req) {
 int shim_session_setup(void *session, void *req, void **resp_out) {
     dbg("setup enter session present", session != 0);
     dbg("setup request present", req != 0);
+    unsigned generation;
     pthread_mutex_lock(&g_state_lock);
     if (g_session != session) {
         g_session_generation++;
         g_conn111 = 0;
         g_have_conn111 = 0;
+        /* A new session must not inherit the old cluster connection/start flag.
+           Context memory is intentionally not freed: old relay threads may hold it. */
+        g_cluster_ctx = 0;
+        g_cluster_started = 0;
     }
     g_session = session;
+    generation = g_session_generation;
     pthread_mutex_unlock(&g_state_lock);
     int had_alt = filter_streams_in_place(req);
     dbg("setup original begin had alt", had_alt);
@@ -594,13 +623,20 @@ int shim_session_setup(void *session, void *req, void **resp_out) {
     dbg("setup response entry release begin", 0);
     cf_release(entry);
     dbg("alt dataPort", port);
-    if (cluster_claim_start()) {
+    if (cluster_claim_start(generation)) {
         pthread_t ct;
-        dbg("setup cluster thread create begin", 0);
-        int thread_rc = pthread_create(&ct, 0, cluster_setup_to_car, 0);
-        dbg("setup cluster thread create rc", thread_rc);
-        if (thread_rc == 0) pthread_detach(ct);
-        else cluster_start_failed();
+        unsigned *arg = (unsigned *)malloc(sizeof(*arg));
+        if (!arg) {
+            dbg("cluster generation arg allocation failed", -1);
+            cluster_start_failed(generation);
+        } else {
+            *arg = generation;
+            dbg("setup cluster thread create begin", 0);
+            int thread_rc = pthread_create(&ct, 0, cluster_setup_to_car, arg);
+            dbg("setup cluster thread create rc", thread_rc);
+            if (thread_rc == 0) pthread_detach(ct);
+            else { free(arg); cluster_start_failed(generation); }
+        }
     }
     dbg("setup complete rc", rc);
     return rc;
@@ -658,9 +694,18 @@ static void cluster_response_cb(void *msg) {
     cf_release(d);
 }
 
-static void *cluster_setup_to_car(void *unused) {
-    (void)unused;
-    if (*GPAIRVERIFY_HK != 0) { dbg("cluster homekit mode unsupported", -1); return 0; }
+static void *cluster_setup_to_car(void *arg) {
+    unsigned generation = *(unsigned *)arg;
+    free(arg);
+    if (!session_is_current(g_session, generation)) {
+        dbg("cluster setup stale generation", -1);
+        return 0;
+    }
+    if (*GPAIRVERIFY_HK != 0) {
+        dbg("cluster homekit mode unsupported", -1);
+        cluster_start_failed(generation);
+        return 0;
+    }
     char *ctx = (char *)malloc(0x288);
     if (!ctx) { dbg("cluster malloc fail", -1); return 0; }
     memset(ctx, 0, 0x288);
@@ -671,9 +716,10 @@ static void *cluster_setup_to_car(void *unused) {
     *(void **)(ctx + 0x30) = sem;
 
     void *msg = 0;
-    if (http_create(&msg) != 0 || !msg) { dbg("cluster http create fail", -1); return 0; }
+    if (http_create(&msg) != 0 || !msg) { dbg("cluster http create fail", -1); cluster_start_failed(generation); return 0; }
     if (http_init((char *)msg + 0x10, "SETUP", "rtsp://localhost/stream", "RTSP/1.0") != 0) {
         dbg("cluster http init fail", -1);
+        cluster_start_failed(generation);
         return 0;
     }
     char cseq[16];
@@ -728,10 +774,14 @@ static void *cluster_setup_to_car(void *unused) {
     dbg("cluster SETUP send begin", 0);
     int send_rc = http_send(*GAIRPLAYCLIENT, msg);
     dbg("cluster SETUP send rc", send_rc);
-    if (send_rc != 0) { dbg("cluster SETUP dispatch failed", send_rc); cluster_start_failed(); return 0; }
+    if (send_rc != 0) { dbg("cluster SETUP dispatch failed", send_rc); cluster_start_failed(generation); return 0; }
     dbg("cluster SETUP wait begin", 0);
     d_sem_wait(sem, ~0ull);
     dbg("cluster SETUP replied", -1);
+    if (!session_is_current(g_session, generation)) {
+        dbg("cluster response from stale generation", -1);
+        return 0;
+    }
 
     int dp = *(int *)(ctx + 4);
     if (dp <= 0) { dbg("cluster no dataPort", -1); return 0; }
@@ -766,8 +816,14 @@ static void *cluster_setup_to_car(void *unused) {
     *(int *)(ctx + 0xc) = 1;
     *(int *)(ctx + 0) = fd;
     pthread_mutex_lock(&g_state_lock);
-    g_cluster_ctx = ctx;
+    int current = generation == g_session_generation;
+    if (current) g_cluster_ctx = ctx;
     pthread_mutex_unlock(&g_state_lock);
+    if (!current) {
+        dbg("cluster late context rejected", -1);
+        close(fd);
+        return 0;
+    }
     dbg("cluster ctx ready", -1);
     return 0;
 }
