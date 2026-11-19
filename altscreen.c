@@ -714,7 +714,7 @@ static void *cluster_setup_to_car(void *arg) {
         return 0;
     }
     char *ctx = (char *)malloc(0x288);
-    if (!ctx) { dbg("cluster malloc fail", -1); return 0; }
+    if (!ctx) { dbg("cluster malloc fail", -1); cluster_start_failed(generation); return 0; }
     memset(ctx, 0, 0x288);
     *(int *)(ctx + 0) = -1;
     pthread_mutex_init((pthread_mutex_t *)(ctx + 0x34), 0);
@@ -735,7 +735,7 @@ static void *cluster_setup_to_car(void *arg) {
 
     void *req = cf_dict_create_mutable(0, 0, dict_key_cb, dict_val_cb);
     void *sd = cf_dict_create_mutable(0, 0, dict_key_cb, dict_val_cb);
-    if (!req || !sd) { dbg("cluster dict fail", -1); return 0; }
+    if (!req || !sd) { dbg("cluster dict fail", -1); cluster_start_failed(generation); return 0; }
 
     unsigned char u[16];
     cf_uuidget(u);
@@ -756,7 +756,7 @@ static void *cluster_setup_to_car(void *arg) {
     if (!arr) {
         cf_release(sd);
         cf_release(req);
-        return 0;
+        cluster_start_failed(generation); return 0;
     }
     dbg("cluster request array install begin", 0);
     cf_dict_set_value(req, K_STREAMS, arr);
@@ -764,10 +764,10 @@ static void *cluster_setup_to_car(void *arg) {
 
     int bodylen = 0;
     void *body = cf_plist_create(req, &bodylen, 0);
-    if (!body) { dbg("cluster plist fail", -1); return 0; }
+    if (!body) { dbg("cluster plist fail", -1); cluster_start_failed(generation); return 0; }
     if (http_setbody(msg, "application/x-apple-binary-plist", body, bodylen) != 0) {
         dbg("cluster setbody fail", -1);
-        return 0;
+        cluster_start_failed(generation); return 0;
     }
     cf_release(arr);
     cf_release(sd);
@@ -791,14 +791,14 @@ static void *cluster_setup_to_car(void *arg) {
     }
 
     int dp = *(int *)(ctx + 4);
-    if (dp <= 0) { dbg("cluster no dataPort", -1); return 0; }
+    if (dp <= 0) { dbg("cluster no dataPort", -1); cluster_start_failed(generation); return 0; }
 
     char sa[160];
     memset(sa, 0, sizeof sa);
     sock_copy(GPEERADDR, sa);
     int family = *(unsigned short *)sa;
     int fd = socket(family, SOCK_STREAM, 0);
-    if (fd < 0) { dbg("cluster socket fail", -1); return 0; }
+    if (fd < 0) { dbg("cluster socket fail", -1); cluster_start_failed(generation); return 0; }
     int one = 1;
     setsockopt(fd, 0xffff, 4, &one, 4);
     if (family == 10) setsockopt(fd, 0x29, 0x1a, &one, 4);
@@ -810,7 +810,7 @@ static void *cluster_setup_to_car(void *arg) {
         if (connect(fd, (struct sockaddr *)sa, slen) == 0) { ok = 1; break; }
         usleep(100000);
     }
-    if (!ok) { dbg("cluster connect fail", -1); close(fd); return 0; }
+    if (!ok) { dbg("cluster connect fail", -1); close(fd); cluster_start_failed(generation); return 0; }
     dbg("cluster connected to car", dp);
 
     char ks[48], is[48];
@@ -829,7 +829,7 @@ static void *cluster_setup_to_car(void *arg) {
     if (!current) {
         dbg("cluster late context rejected", -1);
         close(fd);
-        return 0;
+        cluster_start_failed(generation); return 0;
     }
     dbg("cluster ctx ready", -1);
     return 0;
