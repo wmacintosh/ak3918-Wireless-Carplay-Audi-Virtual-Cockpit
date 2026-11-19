@@ -293,7 +293,7 @@ static int writeall(int fd, const void *buf, int n) {
 }
 
 static int send_to_car(int type, unsigned char *body, unsigned len,
-                       const char **failed_stage) {
+                       unsigned generation, const char **failed_stage) {
     char *ctx = (char *)cluster_context_snapshot();
     if (!ctx || !failed_stage) { errno = EINVAL; return -1; }
     unsigned char hdr[128];
@@ -310,6 +310,15 @@ static int send_to_car(int type, unsigned char *body, unsigned len,
     pthread_mutex_t *mu = *(pthread_mutex_t **)(ctx + 0x4c);
     if (!mu) { errno = EINVAL; return -1; }
     pthread_mutex_lock(mu);
+    pthread_mutex_lock(&g_state_lock);
+    int valid = generation == g_session_generation && g_cluster_ctx == ctx;
+    pthread_mutex_unlock(&g_state_lock);
+    if (!valid) {
+        pthread_mutex_unlock(mu);
+        *failed_stage = "cluster generation expired";
+        errno = ECANCELED;
+        return -1;
+    }
     int fd = *(int *)ctx;
     if (fd < 0) {
         pthread_mutex_unlock(mu);
@@ -524,7 +533,7 @@ static void *sink_thread(void *arg) {
             if (trace_video) dbg("sink video processing complete bytes", (int)bodylen);
             if (dec_ready && cluster_context_snapshot() && g_push_enabled && cfg_body) {
                 if (!cfg_sent) {
-                    if (send_to_car(1, cfg_body, cfg_len, &failed_stage) == 0) {
+                    if (send_to_car(1, cfg_body, cfg_len, snapshot.generation, &failed_stage) == 0) {
                         dbg("alt config sent late", (int)cfg_len);
                         cfg_sent = 1;
                         got_idr = 0;
@@ -546,7 +555,7 @@ static void *sink_thread(void *arg) {
                     }
                     continue;
                 }
-                if (send_to_car(0, body, bodylen, &failed_stage) == 0) pushed++;
+                if (send_to_car(0, body, bodylen, snapshot.generation, &failed_stage) == 0) pushed++;
                 else if (!send_failed) { send_failed = 1;
                     dbg(failed_stage, errno);
                     dbg("alt send to car fail", (int)pushed); }
@@ -566,7 +575,7 @@ static void *sink_thread(void *arg) {
             }
             if (trace_config) dbg("sink config buffer ready", cfg_body != 0);
             if (cfg_body && cluster_context_snapshot() && g_push_enabled) {
-                if (send_to_car(1, cfg_body, cfg_len, &failed_stage) == 0) {
+                if (send_to_car(1, cfg_body, cfg_len, snapshot.generation, &failed_stage) == 0) {
                     pushed++;
                     dbg("alt config sent", (int)cfg_len);
                     cfg_sent = 1;
@@ -587,7 +596,12 @@ static void *sink_thread(void *arg) {
     return 0;
 }
 
-static int open_alt_sink(void *session) {
+static int open_alt_sink(void *session, unsigned generation,
+                         uint64_t connid, int have_connid) {
+    if (!session_is_current(session, generation)) {
+        dbg("sink open rejected stale session", -1);
+        return 0;
+    }
     dbg("sink socket family lookup begin", 0);
     int family = *(unsigned short *)((char *)session + 0x8c);
     dbg("sink socket open begin family", family);
@@ -599,13 +613,17 @@ static int open_alt_sink(void *session) {
     if (fl != -1) fcntl(fd, F_SETFL, fl & ~O_NONBLOCK);
     struct sink_args *args = (struct sink_args *)malloc(sizeof(*args));
     if (!args) { close(fd); dbg("sink args malloc fail", -1); return 0; }
-    pthread_mutex_lock(&g_state_lock);
     args->srv = fd;
     args->session = session;
-    args->connid = g_conn111;
-    args->have_connid = g_have_conn111;
-    args->generation = g_session_generation;
-    pthread_mutex_unlock(&g_state_lock);
+    args->connid = connid;
+    args->have_connid = have_connid;
+    args->generation = generation;
+    if (!session_is_current(session, generation)) {
+        dbg("sink open expired before thread start", -1);
+        free(args);
+        close(fd);
+        return 0;
+    }
     pthread_t t;
     dbg("sink thread create begin", 0);
     int thread_rc = pthread_create(&t, 0, sink_thread, args);
@@ -615,9 +633,10 @@ static int open_alt_sink(void *session) {
     return port;
 }
 
-static int filter_streams_in_place(void *req) {
+static int filter_streams_in_place(void *req, uint64_t *conn_out) {
     int had_alt = 0;
     unsigned long long conn111 = 0;
+    if (conn_out) *conn_out = 0;
     if (!req) return 0;
     dbg("req array type lookup begin", 0);
     unsigned long array_type = cf_array_type_id();
@@ -660,10 +679,7 @@ static int filter_streams_in_place(void *req) {
         dbg("req replacement array install begin", 0);
         cf_dict_set_value(req, KEY_STREAMS, keep);
         dbg("req replacement array install complete", 0);
-        pthread_mutex_lock(&g_state_lock);
-        g_conn111 = conn111;
-        g_have_conn111 = conn111 != 0;
-        pthread_mutex_unlock(&g_state_lock);
+        if (conn_out) *conn_out = conn111;
     }
     dbg("req replacement array release begin", 0);
     cf_release(keep);
@@ -691,7 +707,8 @@ int shim_session_setup(void *session, void *req, void **resp_out) {
     generation = g_session_generation;
     pthread_mutex_unlock(&g_state_lock);
     retire_cluster_context(old_ctx);
-    int had_alt = filter_streams_in_place(req);
+    uint64_t conn111 = 0;
+    int had_alt = filter_streams_in_place(req, &conn111);
     dbg("setup original begin had alt", had_alt);
     int rc = orig_setup(session, req, resp_out);
     dbg("setup original rc", rc);
@@ -702,7 +719,11 @@ int shim_session_setup(void *session, void *req, void **resp_out) {
         return rc;
     }
 
-    int port = open_alt_sink(session);
+    if (!session_is_current(session, generation)) {
+        dbg("setup expired after original handler", -1);
+        return rc;
+    }
+    int port = open_alt_sink(session, generation, conn111, conn111 != 0);
     if (port <= 0) { dbg("alt sink fail", -1); return rc; }
     dbg("setup response entry create begin", 0);
     void *entry = cf_dict_create_mutable(0, 0, dict_key_cb, dict_val_cb);
