@@ -649,9 +649,23 @@ int shim_session_setup(void *session, void *req, void **resp_out) {
     return rc;
 }
 
+/* A response may arrive after the CarPlay session changes. The request
+   owns this small callback record until the firmware's HTTP message lifetime
+   is known; do not free it from the waiting thread. */
+struct cluster_reply_state {
+    char *ctx;
+    unsigned generation;
+};
+
 static void cluster_response_cb(void *msg) {
     dbg("cluster response enter", 0);
     if (!msg) { dbg("cluster response null message", -1); return; }
+    struct cluster_reply_state *reply =
+        *(struct cluster_reply_state **)((char *)msg + 0x8fc);
+    if (!reply || !generation_is_current(reply->generation)) {
+        dbg("cluster stale response ignored", -1);
+        return;
+    }
     int len = *(int *)((char *)msg + 0x4a0);
     dbg("cluster response bytes", len);
     void *bodyp = *(void **)((char *)msg + 0x49c);
@@ -681,18 +695,24 @@ static void cluster_response_cb(void *msg) {
                 if (cf_dict_get_int64(sd, K_TYPE, 0) == CLUSTER_STREAM_TYPE) {
                     dbg("cluster response port lookup begin", 0);
                     int dp = (int)cf_dict_get_int64(sd, K_DATAPORT, 0);
-                    void *ctx = *(void **)((char *)msg + 0x8fc);
+                    void *ctx = reply->ctx;
                     if (!ctx || dp <= 0 || dp > 65535) {
                         dbg("cluster response invalid context or port", dp);
                         break;
                     }
                     void *sem = *(void **)((char *)ctx + 0x30);
                     if (!sem) { dbg("cluster response null semaphore", -1); break; }
-                    *(int *)((char *)ctx + 4) = dp;
-                    dbg("cluster car dataPort", dp);
-                    dbg("cluster response signal begin", 0);
-                    d_sem_signal(sem);
-                    dbg("cluster response signal complete", 0);
+                    /* Publish the port and signal atomically against a
+                       concurrent session-generation change. */
+                    pthread_mutex_lock(&g_state_lock);
+                    int current = reply->generation == g_session_generation;
+                    if (current) {
+                        *(int *)((char *)ctx + 4) = dp;
+                        d_sem_signal(sem);
+                    }
+                    pthread_mutex_unlock(&g_state_lock);
+                    dbg(current ? "cluster response signal complete" :
+                                  "cluster response discarded stale", dp);
                     break;
                 }
             }
@@ -778,10 +798,19 @@ static void *cluster_setup_to_car(void *arg) {
     cf_release(sd);
     cf_release(req);
 
+    struct cluster_reply_state *reply =
+        (struct cluster_reply_state *)malloc(sizeof(*reply));
+    if (!reply) {
+        dbg("cluster callback record allocation failed", -1);
+        cluster_start_failed(generation);
+        return 0;
+    }
+    reply->ctx = ctx;
+    reply->generation = generation;
     *(void **)((char *)msg + 0x904) = (void *)&cluster_response_cb;
     *(int *)((char *)msg + 0x8f4) = 0;
     *(int *)((char *)msg + 0x8f8) = 0;
-    *(void **)((char *)msg + 0x8fc) = ctx;
+    *(void **)((char *)msg + 0x8fc) = reply;
 
     dbg("cluster SETUP send begin", 0);
     int send_rc = http_send(*GAIRPLAYCLIENT, msg);
