@@ -244,6 +244,26 @@ static void *cluster_context_snapshot(void) {
     return ctx;
 }
 
+/* The relay context stays allocated because sink threads may have snapshots.
+   Closing its socket under the per-context lock prevents stale writes from
+   reaching a newly reused file descriptor after a session transition. */
+static void retire_cluster_context(void *old_ctx) {
+    if (!old_ctx) return;
+    char *ctx = (char *)old_ctx;
+    pthread_mutex_t *mu = *(pthread_mutex_t **)(ctx + 0x4c);
+    if (!mu) return;
+    pthread_mutex_lock(mu);
+    int fd = *(int *)ctx;
+    *(int *)ctx = -1;
+    *(int *)(ctx + 0xc) = 0;
+    if (fd >= 0) {
+        shutdown(fd, SHUT_RDWR);
+        close(fd);
+    }
+    pthread_mutex_unlock(mu);
+    dbg("cluster old socket retired", fd);
+}
+
 /* Preserve errno and keep concurrent checkpoint lines together with one append. */
 static void dbg(const char *msg, int n) {
     int saved_errno = errno;
@@ -288,8 +308,14 @@ static int send_to_car(int type, unsigned char *body, unsigned len,
     pthread_mutex_t *mu = *(pthread_mutex_t **)(ctx + 0x4c);
     if (!mu) { errno = EINVAL; return -1; }
     pthread_mutex_lock(mu);
-    if (type == 0) aesctr_update(ctx + 0x168, body, (int)len, body);
     int fd = *(int *)ctx;
+    if (fd < 0) {
+        pthread_mutex_unlock(mu);
+        *failed_stage = "cluster socket retired";
+        errno = ENOTCONN;
+        return -1;
+    }
+    if (type == 0) aesctr_update(ctx + 0x168, body, (int)len, body);
     int rc = writeall(fd, hdr, 128);
     const char *failure = "cluster header send errno";
     if (rc == 0 && len) {
@@ -591,19 +617,22 @@ int shim_session_setup(void *session, void *req, void **resp_out) {
     dbg("setup enter session present", session != 0);
     dbg("setup request present", req != 0);
     unsigned generation;
+    void *old_ctx = 0;
     pthread_mutex_lock(&g_state_lock);
     if (g_session != session) {
         g_session_generation++;
         g_conn111 = 0;
         g_have_conn111 = 0;
-        /* A new session must not inherit the old cluster connection/start flag.
-           Context memory is intentionally not freed: old relay threads may hold it. */
+        /* Detach the previous relay; it must not send after this transition.
+           Keep context memory until all asynchronous readers are accounted for. */
+        old_ctx = g_cluster_ctx;
         g_cluster_ctx = 0;
         g_cluster_started = 0;
     }
     g_session = session;
     generation = g_session_generation;
     pthread_mutex_unlock(&g_state_lock);
+    retire_cluster_context(old_ctx);
     int had_alt = filter_streams_in_place(req);
     dbg("setup original begin had alt", had_alt);
     int rc = orig_setup(session, req, resp_out);
@@ -883,11 +912,21 @@ static void *cluster_setup_to_car(void *arg) {
     int slen = sock_getsize(sa);
     int tries = 21, ok = 0;
     while (tries-- > 0) {
+        if (!generation_is_current(generation)) {
+            dbg("cluster connect cancelled on session change", -1);
+            close(fd);
+            return 0;
+        }
         if (connect(fd, (struct sockaddr *)sa, slen) == 0) { ok = 1; break; }
         usleep(100000);
     }
     if (!ok) { dbg("cluster connect fail", -1); close(fd); cluster_start_failed(generation); return 0; }
     dbg("cluster connected to car", dp);
+    if (!generation_is_current(generation)) {
+        dbg("cluster connection expired before key derivation", -1);
+        close(fd);
+        return 0;
+    }
 
     char ks[48], is[48];
     snprintf(ks, sizeof ks, "%s%llu", "AirPlayStreamKey", connid);
