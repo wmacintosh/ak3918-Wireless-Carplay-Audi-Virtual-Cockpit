@@ -101,7 +101,7 @@ typedef void *(*plistmk_fn)(void *, int *, int);
 typedef void *(*plistrd_fn)(void *, int, int *);
 typedef void (*dsetcstr_fn)(void *, void *, void *, unsigned);
 typedef void *(*semmk_fn)(int);
-typedef void (*semwait_fn)(void *, unsigned long long);
+typedef int (*semwait_fn)(void *, unsigned long long);
 typedef void (*semsig_fn)(void *);
 typedef void (*sockcopy_fn)(void *, void *);
 typedef void (*sockport_fn)(void *, int);
@@ -720,6 +720,11 @@ static void *cluster_setup_to_car(void *arg) {
     pthread_mutex_init((pthread_mutex_t *)(ctx + 0x34), 0);
     *(void **)(ctx + 0x4c) = ctx + 0x34;
     void *sem = d_sem_create(0);
+    if (!sem) {
+        dbg("cluster semaphore create failed", -1);
+        cluster_start_failed(generation);
+        return 0;
+    }
     *(void **)(ctx + 0x30) = sem;
 
     void *msg = 0;
@@ -783,7 +788,15 @@ static void *cluster_setup_to_car(void *arg) {
     dbg("cluster SETUP send rc", send_rc);
     if (send_rc != 0) { dbg("cluster SETUP dispatch failed", send_rc); cluster_start_failed(generation); return 0; }
     dbg("cluster SETUP wait begin", 0);
-    d_sem_wait(sem, ~0ull);
+    /* The stock semaphore implementation returns an integer result.
+       Keep the indefinite wait until the dispatch timebase and asynchronous
+       callback ownership are verified; a naïve timed wait can cause UAF. */
+    int wait_rc = d_sem_wait(sem, ~0ull);
+    dbg("cluster SETUP wait rc", wait_rc);
+    if (wait_rc != 0) {
+        cluster_start_failed(generation);
+        return 0;
+    }
     dbg("cluster SETUP replied", -1);
     if (!generation_is_current(generation)) {
         dbg("cluster response from stale generation", -1);
