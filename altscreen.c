@@ -232,6 +232,7 @@ static int writeall(int fd, const void *buf, int n) {
 static int send_to_car(int type, unsigned char *body, unsigned len,
                        const char **failed_stage) {
     char *ctx = (char *)g_cluster_ctx;
+    if (!ctx || !failed_stage) { errno = EINVAL; return -1; }
     unsigned char hdr[128];
     memset(hdr, 0, sizeof hdr);
     *(unsigned *)hdr = len;
@@ -244,6 +245,7 @@ static int send_to_car(int type, unsigned char *body, unsigned len,
         *(uint32_t *)(hdr + 0x2c) = (CLUSTER_H == 542) ? 0x44078000u : 0x44070000u;
     }
     pthread_mutex_t *mu = *(pthread_mutex_t **)(ctx + 0x4c);
+    if (!mu) { errno = EINVAL; return -1; }
     pthread_mutex_lock(mu);
     if (type == 0) aesctr_update(ctx + 0x168, body, (int)len, body);
     int fd = *(int *)ctx;
@@ -381,10 +383,15 @@ static void *sink_thread(void *arg) {
             if (trace_video) dbg("sink video processing complete bytes", (int)bodylen);
             if (dec_ready && g_cluster_ctx && g_push_enabled && cfg_body) {
                 if (!cfg_sent) {
-                    if (send_to_car(1, cfg_body, cfg_len, &failed_stage) == 0) dbg("alt config sent late", (int)cfg_len);
-                    cfg_sent = 1;
-                    got_idr = 0;
-                    wait_idr = 0;
+                    if (send_to_car(1, cfg_body, cfg_len, &failed_stage) == 0) {
+                        dbg("alt config sent late", (int)cfg_len);
+                        cfg_sent = 1;
+                        got_idr = 0;
+                        wait_idr = 0;
+                    } else {
+                        dbg(failed_stage, errno);
+                        break;
+                    }
                 }
                 if (!got_idr && has_idr(body, bodylen)) { got_idr = 1; dbg("alt idr after frames", wait_idr); }
                 if (!got_idr) {
@@ -414,10 +421,16 @@ static void *sink_thread(void *arg) {
             }
             if (trace_config) dbg("sink config buffer ready", cfg_body != 0);
             if (cfg_body && g_cluster_ctx && g_push_enabled) {
-                if (send_to_car(1, cfg_body, cfg_len, &failed_stage) == 0) { pushed++; dbg("alt config sent", (int)cfg_len); }
-                cfg_sent = 1;
-                got_idr = 0;
-                wait_idr = 0;
+                if (send_to_car(1, cfg_body, cfg_len, &failed_stage) == 0) {
+                    pushed++;
+                    dbg("alt config sent", (int)cfg_len);
+                    cfg_sent = 1;
+                    got_idr = 0;
+                    wait_idr = 0;
+                } else {
+                    dbg(failed_stage, errno);
+                    break;
+                }
             }
         }
         if ((frames % 300) == 0) dbg("alt frames pushed", (int)pushed);
@@ -540,6 +553,7 @@ int shim_session_setup(void *session, void *req, void **resp_out) {
         int thread_rc = pthread_create(&ct, 0, cluster_setup_to_car, 0);
         dbg("setup cluster thread create rc", thread_rc);
         if (thread_rc == 0) pthread_detach(ct);
+        else g_cluster_started = 0;
     }
     dbg("setup complete rc", rc);
     return rc;
@@ -547,10 +561,14 @@ int shim_session_setup(void *session, void *req, void **resp_out) {
 
 static void cluster_response_cb(void *msg) {
     dbg("cluster response enter", 0);
+    if (!msg) { dbg("cluster response null message", -1); return; }
     int len = *(int *)((char *)msg + 0x4a0);
     dbg("cluster response bytes", len);
     void *bodyp = *(void **)((char *)msg + 0x49c);
-    if (len == 0) return;
+    if (len <= 0 || len > 4000000 || !bodyp) {
+        dbg("cluster response invalid body", len);
+        return;
+    }
     int err = 0;
     dbg("cluster response plist read begin", 0);
     void *d = cf_plist_read(bodyp, len, &err);
@@ -574,10 +592,16 @@ static void cluster_response_cb(void *msg) {
                     dbg("cluster response port lookup begin", 0);
                     int dp = (int)cf_dict_get_int64(sd, K_DATAPORT, 0);
                     void *ctx = *(void **)((char *)msg + 0x8fc);
+                    if (!ctx || dp <= 0 || dp > 65535) {
+                        dbg("cluster response invalid context or port", dp);
+                        break;
+                    }
+                    void *sem = *(void **)((char *)ctx + 0x30);
+                    if (!sem) { dbg("cluster response null semaphore", -1); break; }
                     *(int *)((char *)ctx + 4) = dp;
                     dbg("cluster car dataPort", dp);
                     dbg("cluster response signal begin", 0);
-                    d_sem_signal(*(void **)((char *)ctx + 0x30));
+                    d_sem_signal(sem);
                     dbg("cluster response signal complete", 0);
                     break;
                 }
