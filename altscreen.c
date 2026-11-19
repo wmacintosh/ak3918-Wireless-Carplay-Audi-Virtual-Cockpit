@@ -652,9 +652,15 @@ int shim_session_setup(void *session, void *req, void **resp_out) {
 /* A response may arrive after the CarPlay session changes. The request
    owns this small callback record until the firmware's HTTP message lifetime
    is known; do not free it from the waiting thread. */
+enum cluster_reply_phase {
+    CLUSTER_REPLY_PENDING = 0,
+    CLUSTER_REPLY_DELIVERED = 1,
+    CLUSTER_REPLY_RETIRED = 2
+};
 struct cluster_reply_state {
     char *ctx;
     unsigned generation;
+    enum cluster_reply_phase phase; /* Protected by g_state_lock. */
 };
 
 static void cluster_response_cb(void *msg) {
@@ -662,8 +668,16 @@ static void cluster_response_cb(void *msg) {
     if (!msg) { dbg("cluster response null message", -1); return; }
     struct cluster_reply_state *reply =
         *(struct cluster_reply_state **)((char *)msg + 0x8fc);
-    if (!reply || !generation_is_current(reply->generation)) {
-        dbg("cluster stale response ignored", -1);
+    if (!reply) {
+        dbg("cluster response missing request record", -1);
+        return;
+    }
+    pthread_mutex_lock(&g_state_lock);
+    int eligible = reply->generation == g_session_generation &&
+                   reply->phase == CLUSTER_REPLY_PENDING;
+    pthread_mutex_unlock(&g_state_lock);
+    if (!eligible) {
+        dbg("cluster stale or retired response ignored", -1);
         return;
     }
     int len = *(int *)((char *)msg + 0x4a0);
@@ -705,8 +719,10 @@ static void cluster_response_cb(void *msg) {
                     /* Publish the port and signal atomically against a
                        concurrent session-generation change. */
                     pthread_mutex_lock(&g_state_lock);
-                    int current = reply->generation == g_session_generation;
+                    int current = reply->generation == g_session_generation &&
+                                  reply->phase == CLUSTER_REPLY_PENDING;
                     if (current) {
+                        reply->phase = CLUSTER_REPLY_DELIVERED;
                         *(int *)((char *)ctx + 4) = dp;
                         d_sem_signal(sem);
                     }
@@ -807,6 +823,7 @@ static void *cluster_setup_to_car(void *arg) {
     }
     reply->ctx = ctx;
     reply->generation = generation;
+    reply->phase = CLUSTER_REPLY_PENDING;
     *(void **)((char *)msg + 0x904) = (void *)&cluster_response_cb;
     *(int *)((char *)msg + 0x8f4) = 0;
     *(int *)((char *)msg + 0x8f8) = 0;
@@ -817,13 +834,23 @@ static void *cluster_setup_to_car(void *arg) {
     dbg("cluster SETUP send rc", send_rc);
     if (send_rc != 0) { dbg("cluster SETUP dispatch failed", send_rc); cluster_start_failed(generation); return 0; }
     dbg("cluster SETUP wait begin", 0);
-    /* The stock semaphore implementation returns an integer result.
-       Keep the indefinite wait until the dispatch timebase and asynchronous
-       callback ownership are verified; a naïve timed wait can cause UAF. */
-    int wait_rc = d_sem_wait(sem, ~0ull);
+    /* Stock dispatch semaphore uses signed dispatch_time_t (nanoseconds):
+       negative values represent a duration relative to monotonic time.
+       The 0xa15b8/0xa1524 disassembly uses 1,000,000-ns conversions.
+       Only use this in an unflashed, experimental build pending runtime proof. */
+    const uint64_t timeout = (uint64_t)(int64_t)-10000000000LL;
+    int wait_rc = d_sem_wait(sem, timeout);
     dbg("cluster SETUP wait rc", wait_rc);
     if (wait_rc != 0) {
-        cluster_start_failed(generation);
+        /* The firmware may still call back with this message. Retain ctx,
+           reply and semaphore, but stop accepting replies to this request.
+           Do not start another request in the same session; that would leak
+           more callback-owned state while ownership is unverified. */
+        pthread_mutex_lock(&g_state_lock);
+        if (reply->phase == CLUSTER_REPLY_PENDING)
+            reply->phase = CLUSTER_REPLY_RETIRED;
+        pthread_mutex_unlock(&g_state_lock);
+        dbg("cluster SETUP timed out or failed", wait_rc);
         return 0;
     }
     dbg("cluster SETUP replied", -1);
