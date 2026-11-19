@@ -205,8 +205,6 @@ static int g_cluster_started;
 static int g_push_enabled = 1;
 static void *g_session;
 static unsigned g_session_generation;
-static unsigned long long g_conn111;
-static int g_have_conn111;
 static void *cluster_setup_to_car(void *);
 
 static int session_is_current(void *session, unsigned generation) {
@@ -695,8 +693,6 @@ int shim_session_setup(void *session, void *req, void **resp_out) {
     pthread_mutex_lock(&g_state_lock);
     if (g_session != session) {
         g_session_generation++;
-        g_conn111 = 0;
-        g_have_conn111 = 0;
         /* Detach the previous relay; it must not send after this transition.
            Keep context memory until all asynchronous readers are accounted for. */
         old_ctx = g_cluster_ctx;
