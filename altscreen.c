@@ -10,6 +10,7 @@ void __aeabi_unwind_cpp_pr1(void) {}
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include <sys/socket.h>
 #include <unistd.h>
 
@@ -658,9 +659,11 @@ enum cluster_reply_phase {
     CLUSTER_REPLY_RETIRED = 2
 };
 struct cluster_reply_state {
-    char *ctx;
     unsigned generation;
-    enum cluster_reply_phase phase; /* Protected by g_state_lock. */
+    enum cluster_reply_phase phase; /* Protected by mu. */
+    int data_port;                   /* Protected by mu. */
+    pthread_mutex_t mu;
+    pthread_cond_t cv;
 };
 
 static void cluster_response_cb(void *msg) {
@@ -672,10 +675,10 @@ static void cluster_response_cb(void *msg) {
         dbg("cluster response missing request record", -1);
         return;
     }
-    pthread_mutex_lock(&g_state_lock);
-    int eligible = reply->generation == g_session_generation &&
-                   reply->phase == CLUSTER_REPLY_PENDING;
-    pthread_mutex_unlock(&g_state_lock);
+    pthread_mutex_lock(&reply->mu);
+    int eligible = reply->phase == CLUSTER_REPLY_PENDING;
+    pthread_mutex_unlock(&reply->mu);
+    if (eligible) eligible = generation_is_current(reply->generation);
     if (!eligible) {
         dbg("cluster stale or retired response ignored", -1);
         return;
@@ -709,24 +712,21 @@ static void cluster_response_cb(void *msg) {
                 if (cf_dict_get_int64(sd, K_TYPE, 0) == CLUSTER_STREAM_TYPE) {
                     dbg("cluster response port lookup begin", 0);
                     int dp = (int)cf_dict_get_int64(sd, K_DATAPORT, 0);
-                    void *ctx = reply->ctx;
-                    if (!ctx || dp <= 0 || dp > 65535) {
-                        dbg("cluster response invalid context or port", dp);
+                    if (dp <= 0 || dp > 65535) {
+                        dbg("cluster response invalid port", dp);
                         break;
                     }
-                    void *sem = *(void **)((char *)ctx + 0x30);
-                    if (!sem) { dbg("cluster response null semaphore", -1); break; }
-                    /* Publish the port and signal atomically against a
-                       concurrent session-generation change. */
-                    pthread_mutex_lock(&g_state_lock);
-                    int current = reply->generation == g_session_generation &&
-                                  reply->phase == CLUSTER_REPLY_PENDING;
+                    /* Serialize delivery with timeout retirement. Lock order:
+                       reply->mu -> g_state_lock (never the reverse). */
+                    pthread_mutex_lock(&reply->mu);
+                    int current = reply->phase == CLUSTER_REPLY_PENDING &&
+                                  generation_is_current(reply->generation);
                     if (current) {
+                        reply->data_port = dp;
                         reply->phase = CLUSTER_REPLY_DELIVERED;
-                        *(int *)((char *)ctx + 4) = dp;
-                        d_sem_signal(sem);
+                        pthread_cond_signal(&reply->cv);
                     }
-                    pthread_mutex_unlock(&g_state_lock);
+                    pthread_mutex_unlock(&reply->mu);
                     dbg(current ? "cluster response signal complete" :
                                   "cluster response discarded stale", dp);
                     break;
@@ -755,13 +755,8 @@ static void *cluster_setup_to_car(void *arg) {
     *(int *)(ctx + 0) = -1;
     pthread_mutex_init((pthread_mutex_t *)(ctx + 0x34), 0);
     *(void **)(ctx + 0x4c) = ctx + 0x34;
-    void *sem = d_sem_create(0);
-    if (!sem) {
-        dbg("cluster semaphore create failed", -1);
-        cluster_start_failed(generation);
-        return 0;
-    }
-    *(void **)(ctx + 0x30) = sem;
+    /* Reply state uses a POSIX condition variable, not the firmware's
+       undocumented dispatch-semaphore timebase. */
 
     void *msg = 0;
     if (http_create(&msg) != 0 || !msg) { dbg("cluster http create fail", -1); cluster_start_failed(generation); return 0; }
@@ -821,9 +816,22 @@ static void *cluster_setup_to_car(void *arg) {
         cluster_start_failed(generation);
         return 0;
     }
-    reply->ctx = ctx;
     reply->generation = generation;
     reply->phase = CLUSTER_REPLY_PENDING;
+    reply->data_port = 0;
+    if (pthread_mutex_init(&reply->mu, 0) != 0) {
+        dbg("cluster reply mutex init failed", -1);
+        free(reply);
+        cluster_start_failed(generation);
+        return 0;
+    }
+    if (pthread_cond_init(&reply->cv, 0) != 0) {
+        dbg("cluster reply cond init failed", -1);
+        pthread_mutex_destroy(&reply->mu);
+        free(reply);
+        cluster_start_failed(generation);
+        return 0;
+    }
     *(void **)((char *)msg + 0x904) = (void *)&cluster_response_cb;
     *(int *)((char *)msg + 0x8f4) = 0;
     *(int *)((char *)msg + 0x8f8) = 0;
@@ -834,22 +842,21 @@ static void *cluster_setup_to_car(void *arg) {
     dbg("cluster SETUP send rc", send_rc);
     if (send_rc != 0) { dbg("cluster SETUP dispatch failed", send_rc); cluster_start_failed(generation); return 0; }
     dbg("cluster SETUP wait begin", 0);
-    /* Stock dispatch semaphore uses signed dispatch_time_t (nanoseconds):
-       negative values represent a duration relative to monotonic time.
-       The 0xa15b8/0xa1524 disassembly uses 1,000,000-ns conversions.
-       Only use this in an unflashed, experimental build pending runtime proof. */
-    const uint64_t timeout = (uint64_t)(int64_t)-10000000000LL;
-    int wait_rc = d_sem_wait(sem, timeout);
+    struct timespec until;
+    int wait_rc = clock_gettime(CLOCK_REALTIME, &until);
+    if (wait_rc == 0) until.tv_sec += 10;
+    else wait_rc = errno ? errno : EINVAL;
+    pthread_mutex_lock(&reply->mu);
+    while (wait_rc == 0 && reply->phase == CLUSTER_REPLY_PENDING)
+        wait_rc = pthread_cond_timedwait(&reply->cv, &reply->mu, &until);
+    int dp = reply->phase == CLUSTER_REPLY_DELIVERED ? reply->data_port : 0;
+    if (!dp && reply->phase == CLUSTER_REPLY_PENDING)
+        reply->phase = CLUSTER_REPLY_RETIRED;
+    pthread_mutex_unlock(&reply->mu);
     dbg("cluster SETUP wait rc", wait_rc);
-    if (wait_rc != 0) {
-        /* The firmware may still call back with this message. Retain ctx,
-           reply and semaphore, but stop accepting replies to this request.
-           Do not start another request in the same session; that would leak
-           more callback-owned state while ownership is unverified. */
-        pthread_mutex_lock(&g_state_lock);
-        if (reply->phase == CLUSTER_REPLY_PENDING)
-            reply->phase = CLUSTER_REPLY_RETIRED;
-        pthread_mutex_unlock(&g_state_lock);
+    if (dp <= 0) {
+        /* Do not release reply: vendor HTTP code may still enter callback.
+           Keep the start claimed for this session to avoid retries/leaks. */
         dbg("cluster SETUP timed out or failed", wait_rc);
         return 0;
     }
@@ -859,7 +866,7 @@ static void *cluster_setup_to_car(void *arg) {
         return 0;
     }
 
-    int dp = *(int *)(ctx + 4);
+    *(int *)(ctx + 4) = dp;
     if (dp <= 0) { dbg("cluster no dataPort", -1); cluster_start_failed(generation); return 0; }
 
     char sa[160];
