@@ -5,6 +5,7 @@ void __aeabi_unwind_cpp_pr1(void) {}
 #include <errno.h>
 #include <fcntl.h>
 #include <netinet/in.h>
+#include <poll.h>
 #include <pthread.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -12,6 +13,7 @@ void __aeabi_unwind_cpp_pr1(void) {}
 #include <string.h>
 #include <time.h>
 #include <sys/socket.h>
+#include <sys/time.h>
 #include <unistd.h>
 
 /* ARM AK3918AN (ak_202610081659) verified addresses */
@@ -332,12 +334,37 @@ static int send_to_car(int type, unsigned char *body, unsigned len,
     return rc;
 }
 
-static int readn(int fd, void *buf, int n) {
+/* Poll in bounded intervals so an old sink cannot remain blocked inside
+   read() indefinitely after a new SETUP session has replaced it. */
+static int readn(int fd, void *buf, int n, unsigned generation) {
     char *p = (char *)buf;
     int got = 0;
     while (got < n) {
+        if (!generation_is_current(generation)) {
+            errno = ECANCELED;
+            return -1;
+        }
+        struct pollfd pfd;
+        pfd.fd = fd;
+        pfd.events = POLLIN;
+        pfd.revents = 0;
+        int ready = poll(&pfd, 1, 1000);
+        if (ready == 0) continue;
+        if (ready < 0) {
+            if (errno == EINTR) continue;
+            dbg("sink phone poll errno", errno);
+            return -1;
+        }
+        if (!(pfd.revents & (POLLIN | POLLHUP))) {
+            dbg("sink phone poll disconnected", pfd.revents);
+            return -1;
+        }
         ssize_t r = read(fd, p + got, n - got);
-        if (r < 0) { dbg("sink phone read errno", errno); return -1; }
+        if (r < 0) {
+            if (errno == EINTR || errno == EAGAIN) continue;
+            dbg("sink phone read errno", errno);
+            return -1;
+        }
         if (r == 0) { dbg("sink phone EOF after bytes", got); return -1; }
         got += (int)r;
     }
@@ -355,7 +382,27 @@ static void *sink_thread(void *arg) {
     int have_connid = snapshot.have_connid;
     dbg("alt sink thread up", -1);
     dbg("sink accept begin", 0);
-    int c = accept(srv, 0, 0);
+    int c = -1;
+    for (;;) {
+        if (!generation_is_current(snapshot.generation)) {
+            dbg("sink accept cancelled on session change", -1);
+            break;
+        }
+        struct pollfd pfd;
+        pfd.fd = srv;
+        pfd.events = POLLIN;
+        pfd.revents = 0;
+        int ready = poll(&pfd, 1, 1000);
+        if (ready == 0) continue;
+        if (ready < 0 && errno == EINTR) continue;
+        if (ready <= 0 || !(pfd.revents & POLLIN)) {
+            dbg("sink accept poll failed", ready);
+            break;
+        }
+        c = accept(srv, 0, 0);
+        if (c < 0 && (errno == EINTR || errno == EAGAIN)) continue;
+        break;
+    }
     dbg("sink accept success", c >= 0);
     close(srv);
     if (c < 0) { dbg("alt accept fail", -1); return 0; }
@@ -375,6 +422,13 @@ static void *sink_thread(void *arg) {
     unsigned char cctx[0x200] __attribute__((aligned(8)));
     unsigned char cckey[32], ccnonce[8];
     int dec_ready = 0, chacha = 0;
+    /* Generation checks narrow the race, but the vendor session pointer is
+       not retained: true lifetime safety requires a verified vendor API. */
+    if (!session_is_current(session, snapshot.generation)) {
+        dbg("sink session changed before keys", -1);
+        close(c);
+        return 0;
+    }
     dbg("sink pairVerify lookup begin", session != 0);
     void *pvs = session ? *(void **)((char *)session + 0x3ec) : 0;
     dbg("alt pairVerifySession set", pvs ? 1 : 0);
@@ -414,7 +468,7 @@ static void *sink_thread(void *arg) {
             dbg("sink session changed", -1);
             break;
         }
-        if (readn(c, hdr, 128) != 0) {
+        if (readn(c, hdr, 128, snapshot.generation) != 0) {
             dbg("sink header read ended", (int)frames);
             break;
         }
@@ -432,7 +486,7 @@ static void *sink_thread(void *arg) {
         }
         int trace_frame = frames <= 3;
         if (trace_frame) dbg("sink payload read begin bytes", (int)bodylen);
-        if (readn(c, body, bodylen) != 0) {
+        if (readn(c, body, bodylen, snapshot.generation) != 0) {
             dbg("sink payload read ended frame", (int)frames);
             break;
         }
@@ -483,6 +537,10 @@ static void *sink_thread(void *arg) {
                 if (!got_idr && has_idr(body, bodylen)) { got_idr = 1; dbg("alt idr after frames", wait_idr); }
                 if (!got_idr) {
                     if ((wait_idr++ % 120) == 0) {
+                        if (!session_is_current(session, snapshot.generation)) {
+                            dbg("sink session changed before keyframe", -1);
+                            break;
+                        }
                         int kr = send_phone_cmd(session, "forceKeyFrame", 0);
                         dbg("alt force keyframe err", kr < 0 ? -kr : kr);
                     }
@@ -922,6 +980,14 @@ static void *cluster_setup_to_car(void *arg) {
     }
     if (!ok) { dbg("cluster connect fail", -1); close(fd); cluster_start_failed(generation); return 0; }
     dbg("cluster connected to car", dp);
+    /* Bound send() holding the per-context mutex. A dead TCP peer must not
+       block retirement of the old session indefinitely. */
+    struct timeval send_limit;
+    send_limit.tv_sec = 5;
+    send_limit.tv_usec = 0;
+    if (setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO,
+                   &send_limit, sizeof send_limit) != 0)
+        dbg("cluster send timeout configuration failed", errno);
     if (!generation_is_current(generation)) {
         dbg("cluster connection expired before key derivation", -1);
         close(fd);
