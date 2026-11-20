@@ -53,6 +53,17 @@ The `0x136918` GOT slot contains `0x0009fb1c`, an exported symbol named **`__dis
 - `0xa26cc` submits this wrapper to the queue. `0xa26ec` blocks on the condition until completion. Thus the synchronous dispatch mechanism and completion callback are understood.
 - **Crucial:** This does not imply session retention. It only guarantees execution completion *after* the dispatcher is entered with valid inputs. The existing `sink_thread` may access a freed vendor session before calling the dispatcher. Do not treat queue serialization as an ownership solution.
 
+## Key derivation relocation audit (source-level, 2026-11-20)
+
+Verified in `altscreen.c` (last executable revision `82613bf`):
+- `get_stream_keys` is called at sink-thread line 444 with `session+0x3ec`, a stream connection ID and a 32-byte output buffer.
+- Legacy `derive_screen` at line 454 uses `session+0x200`, stream connection ID and 16-byte key/IV outputs.
+- `showUI` at line 424 and `forceKeyFrame` at line 551 are also invoked from the asynchronous sink thread using the raw vendor session pointer.
+- The hook calls original SETUP at line 709. A safe redesign would obtain any required key material **inside that synchronous handler**, then pass owned key bytes plus stream generation to the sink thread; do not attempt this before confirming the vendor key APIs are valid there.
+- Moving keys alone does not fix the two asynchronous session-command calls. They must be removed, moved to a proven session lifetime window, or protected by a verified firmware-owned retain/teardown mechanism. Dropping them unconditionally could impair video startup/recovery.
+
+Read-only disassembly targets: `get_stream_keys` at `0x654c0`, `derive_screen` at `0x73e84`, and tail of the original SETUP handler at `0x6a60c`. Check whether the APIs require state populated *after* SETUP and whether they access the parent session outside the supplied subobject pointer.
+
 ## Current experimental hook risks
 
 1. `sink_thread` still holds `snapshot.session` and asynchronously calls `send_phone_cmd` (showUI and forceKeyFrame).
