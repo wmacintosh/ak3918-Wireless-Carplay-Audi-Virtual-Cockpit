@@ -166,6 +166,14 @@ Next read-only work: inspect `0xa04bc–0xa0590` and `0xf0090–0xf0110` to prov
 - The destructor target is **not yet resolved**: retrieve the literal at `0xa0920`, compute the GOT effective address using the PIC base, inspect the slot contents, and disassemble that function. Do not equate `__dispatch_queue_concurrent_drain` with the destructor without confirming the pointer target.
 - The queue mutex does not in itself prove that shutdown blocks new submissions or waits for running callbacks. No parent-session ownership guarantee is established. Do not flash.
 
+## Experimental static safety gate (2026-11-20)
+
+- Added `scripts/check_session_safety.py` (commit `b32c205`) to fail when `sink_args` contains vendor session pointers, `sink_thread` invokes delayed `send_phone_cmd`, `session_send_command`, `get_stream_keys` or `derive_screen`, or key-wipe/generation patterns disappear.
+- Added `.github/workflows/session-safety.yml` (commit `6b74459`) for pushes to `fix/**` and pull requests targeting `main` / `fix/**`. It runs only a Python static check on hosted CI, **not** an ARM Buildroot compile.
+- Workflow execution/result has not been verified yet; repository access could not inspect its run via the available GitHub API action.
+- This is a regression guard for previously identified source patterns, not formal race detection, proof of queue ownership, full-code security review, a real device test, or authority to flash.
+- The queue destructor callback is still unresolved from the `a0874` GOT load. Continue static disassembly next.
+
 ## Current experimental hook risks
 
 1. `sink_thread` still holds `snapshot.session` and asynchronously calls `send_phone_cmd` (showUI and forceKeyFrame).
