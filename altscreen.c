@@ -770,6 +770,22 @@ struct cluster_reply_state {
     pthread_cond_t cv;
 };
 
+/* Complete exactly once under the reply lock. Invalid replies wake the
+   waiting thread promptly instead of forcing it to wait for the deadline.
+   The request record remains allocated until vendor ownership is known. */
+static void cluster_reply_complete(struct cluster_reply_state *reply, int port) {
+    pthread_mutex_lock(&reply->mu);
+    int current = reply->phase == CLUSTER_REPLY_PENDING &&
+                  generation_is_current(reply->generation);
+    if (current) {
+        reply->data_port = port;
+        reply->phase = CLUSTER_REPLY_DELIVERED;
+        pthread_cond_signal(&reply->cv);
+    }
+    pthread_mutex_unlock(&reply->mu);
+    dbg(current ? "cluster reply completed" : "cluster reply ignored", port);
+}
+
 static void cluster_response_cb(void *msg) {
     dbg("cluster response enter", 0);
     if (!msg) { dbg("cluster response null message", -1); return; }
@@ -792,13 +808,19 @@ static void cluster_response_cb(void *msg) {
     void *bodyp = *(void **)((char *)msg + 0x49c);
     if (len <= 0 || len > 4000000 || !bodyp) {
         dbg("cluster response invalid body", len);
+        cluster_reply_complete(reply, -1);
         return;
     }
     int err = 0;
     dbg("cluster response plist read begin", 0);
     void *d = cf_plist_read(bodyp, len, &err);
     dbg("cluster response plist read rc", err);
-    if (err != 0 || !d) return;
+    if (err != 0 || !d) {
+        if (d) cf_release(d);
+        cluster_reply_complete(reply, -1);
+        return;
+    }
+    int found_port = -1;
     if (cf_get_type_id(d) == cf_dict_type_id()) {
         dbg("cluster response array lookup begin", 0);
         void *streams = cf_dict_get_typed(d, K_STREAMS, cf_array_type_id(), 0);
@@ -807,6 +829,10 @@ static void cluster_response_cb(void *msg) {
             dbg("cluster response count begin", 0);
             long n = cf_array_count(streams);
             dbg("cluster response count", (int)n);
+            if (n < 0 || n > 128) {
+                dbg("cluster response unreasonable stream count", (int)n);
+                n = 0;
+            }
             for (long i = 0; i < n; i++) {
                 if (i < 16) dbg("cluster response array get begin index", (int)i);
                 void *sd = cf_array_at2(streams, i);
@@ -820,25 +846,14 @@ static void cluster_response_cb(void *msg) {
                         dbg("cluster response invalid port", dp);
                         break;
                     }
-                    /* Serialize delivery with timeout retirement. Lock order:
-                       reply->mu -> g_state_lock (never the reverse). */
-                    pthread_mutex_lock(&reply->mu);
-                    int current = reply->phase == CLUSTER_REPLY_PENDING &&
-                                  generation_is_current(reply->generation);
-                    if (current) {
-                        reply->data_port = dp;
-                        reply->phase = CLUSTER_REPLY_DELIVERED;
-                        pthread_cond_signal(&reply->cv);
-                    }
-                    pthread_mutex_unlock(&reply->mu);
-                    dbg(current ? "cluster response signal complete" :
-                                  "cluster response discarded stale", dp);
+                    found_port = dp;
                     break;
                 }
             }
         }
     }
     cf_release(d);
+    cluster_reply_complete(reply, found_port);
 }
 
 static void *cluster_setup_to_car(void *arg) {
@@ -954,7 +969,7 @@ static void *cluster_setup_to_car(void *arg) {
     while (wait_rc == 0 && reply->phase == CLUSTER_REPLY_PENDING)
         wait_rc = pthread_cond_timedwait(&reply->cv, &reply->mu, &until);
     int dp = reply->phase == CLUSTER_REPLY_DELIVERED ? reply->data_port : 0;
-    if (!dp && reply->phase == CLUSTER_REPLY_PENDING)
+    if (dp <= 0 && reply->phase == CLUSTER_REPLY_PENDING)
         reply->phase = CLUSTER_REPLY_RETIRED;
     pthread_mutex_unlock(&reply->mu);
     dbg("cluster SETUP wait rc", wait_rc);
