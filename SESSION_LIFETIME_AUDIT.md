@@ -18,6 +18,18 @@
 - No path yet establishes a retain/release API for the parent session pointer or any safe shutdown callback. Do not call these internal functions as guessed retain/release primitives.
 - Follow-up target: inspect `0xa1900` (queue/dispatch path) and the remaining part of `0xa2488` (`0xa26dc–0xa26f4`) to understand completion ordering. Separately trace which allocator/destructor owns the parent session allocation.
 
+## Dispatch queue findings (2026-11-20)
+
+- `0xa0800` is **a dispatch-object allocator**, not a release function: it calls `calloc(1,132)`, initializes an object header/count, and constructs a mutex at `+0x14` (pointer published at `+0x2c`).
+- `0xa1900` is **queue submission**: after validating the dispatch object it calls `calloc(1,12)`, records a work callback/context in the new node, locks the dispatch object's `+0x2c` mutex, appends the node using the `+0x34` tail pointer, and conditionally signals a queue condition variable.
+- `0xa2488` is a **synchronous dispatch wrapper**. It sets up stack-local mutex and condition variable, passes a work callback and that local state to `0xa1900`, then locks the mutex and waits at `0xa26ec` (`pthread_cond_wait`) until the state byte at stack offset `+0x74` becomes nonzero. The remainder of its cleanup and the callback that signals completion still need validation.
+- This demonstrates **work scheduling/serialization**, not a retain/release guarantee for the parent AirPlay session. Never use `0xa0800`, `0xa1900`, or `0xa2488` as a guessed session retain primitive.
+- The unresolved hazard is the asynchronous `sink_thread` dereferencing its raw `snapshot.session` before calling the vendor command dispatcher and key derivation. Dispatch serialization cannot protect a pointer that was already freed before entry.
+
+### Targeted follow-up
+
+Inspect `0xa26f0–0xa275c` and the implementation of the callback passed through the literal loaded at `0xa26b0` to establish how the synchronous waiter is signalled and whether a dispatcher reference is retained. Then trace parent-session allocation/destruction separately.
+
 ## Current experimental hook risks
 
 1. `sink_thread` still holds `snapshot.session` and asynchronously calls `send_phone_cmd` (showUI and forceKeyFrame).
@@ -34,8 +46,8 @@ A promising alternate architecture is copying necessary key material while synch
 
 ## Next stock binary questions
 
-1. Does `0xa1900` enqueue a callback, execute synchronously, or hold a reference until completion? What does the final `0xa2488` wait do?
-2. What does `0xa0800` release, and is that a dispatch-context reference rather than the command-channel object?
+1. Which callback signals completion of the synchronous `0xa2488` wait, and does any command dispatch mechanism retain its **parent session** (rather than just the dispatch queue)?
+2. Which function actually frees the dispatch object allocated by `0xa0800`, and can that overlap with a new command?
 3. Which function frees the **session allocation**, and does it notify all other threads before doing so?
 4. Does the vendor send-command operation retain its session internally on entry? If so, how is the entry itself protected from concurrent free?
 5. At what point in SETUP does `get_stream_keys` (at `0x654c0`) succeed?
