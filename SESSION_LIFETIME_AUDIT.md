@@ -42,6 +42,17 @@ Inspect `0xa26f0–0xa275c` and the implementation of the callback passed throug
 
 The `0xa2488` wrapper loads a PIC/GOT base into `r7`. The PC-relative base calculation at `0xa249c` yields `0x136000`; the literal at `0xa2758` has value `0x918`. Consequently `0xa26b8` reads the function pointer from **`0x136918`**, subsequently passing it in `r2` to `0xa1900` at `0xa26cc`. This is the strongest current candidate for the synchronous completion callback. The stock image's `.got` bytes at `0x136918` are `1c fb 09 00` (little-endian), giving the concrete callback address **`0x0009fb1c`**. `readelf -rW` showed no relocation for this slot. Disassemble `0x9fb1c` to identify its behavior; its address does not establish any retain of the parent CarPlay session.
 
+## Resolved synchronous completion callback (2026-11-20)
+
+The `0x136918` GOT slot contains `0x0009fb1c`, an exported symbol named **`__dispatch_sync_callback`**. The disassembly confirms:
+- `0x9fb20–0x9fb2c`: fetch a work-function pointer from callback context `+0` and its argument from `+4`; call the work function via `blx r3`.
+- `0x9fb30–0x9fb34`: lock the caller-provided mutex from callback context `+0x20`.
+- `0x9fb38–0x9fb3c`: set the caller's done flag at callback context `+0x5c` to 1.
+- `0x9fb40–0x9fb44`: signal caller-provided condition variable at callback context `+0x58`.
+- `0x9fb48–0x9fb50`: unlock the mutex.
+- `0xa26cc` submits this wrapper to the queue. `0xa26ec` blocks on the condition until completion. Thus the synchronous dispatch mechanism and completion callback are understood.
+- **Crucial:** This does not imply session retention. It only guarantees execution completion *after* the dispatcher is entered with valid inputs. The existing `sink_thread` may access a freed vendor session before calling the dispatcher. Do not treat queue serialization as an ownership solution.
+
 ## Current experimental hook risks
 
 1. `sink_thread` still holds `snapshot.session` and asynchronously calls `send_phone_cmd` (showUI and forceKeyFrame).
