@@ -130,6 +130,16 @@ The user inspected the locally built `libSdH-lifecycle-test.so`:
 - `snapshot_alt_keys` does not show as a separately named function, consistent with optimization/inlining but not a proof of execution behavior.
 - These checks do not verify invocation arguments for vendor functions, key correctness, absence of runtime UAF, or that the phone supplies video without deferred commands. **Do not flash**.
 
+## Command entry and teardown ordering (2026-11-20)
+
+New read-only disassembly:
+- `0x673e0` reads session readiness byte `+0x3ce`, returning the error literal at `0x67418` if zero. On the ready path it reads the dispatch object from session `+0x3d0` and calls synchronous `0xa2488` with a stack callback record.
+- `0x6777c` submits a synchronous operation via the session dispatch queue, then `0x67788` calls `0x61254`. That cleanup routine itself submits an operation to the same queue at `0x61274` before releasing/clearing PairVerify `+0x3ec` at `0x61288–0x61290`.
+- A separate cleanup path at `0x66bc8–0x66bdc` reads `+0x3d0`, calls `0xa04bc` and zeros that field. `0xa04bc` is labeled with a dispatch-semaphore symbol but its exact queue shutdown/retention semantics still require verification.
+- **Concurrency limitation**: internal synchronous queue dispatch does not protect an outside thread's *entry* through a raw session pointer. The ready flag is not an ownership token and may be stale; even `+0x3d0` can be freed during teardown. No permission to reinstate `send_phone_cmd` on the sink thread. The local compile-only branch leaves both delayed commands disabled.
+
+Next read-only target: inspect caller-side guard and queue release mechanics of `0xa04bc` and the broader routine around `0x66b70`, plus the parent session allocator/free references, to establish an exclusion or retention contract. Do not flash.
+
 ## Current experimental hook risks
 
 1. `sink_thread` still holds `snapshot.session` and asynchronously calls `send_phone_cmd` (showUI and forceKeyFrame).
