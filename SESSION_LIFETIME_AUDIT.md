@@ -87,6 +87,14 @@ Read-only disassembly targets: `get_stream_keys` at `0x654c0`, `derive_screen` a
 - Executable source currently leaves the raw parent `session` in `sink_args`, and asynchronously calls `send_phone_cmd` for showUI/forceKeyFrame. The known CF retain API for PairVerify is **not** a license to retain the parent session the same way.
 - Before implementing even a compile-only patch, inspect the original SETUP's derivation result handling (`0x6b098–0x6b190`), and identify a safe, non-session command mechanism or an explicit session lifecycle guard for delayed commands. For a safe production path, no async parent-session dereferences may remain.
 
+## Original SETUP key-success handling (2026-11-20)
+
+- At `0x6b068–0x6b094`, the stock SETUP checks that the PairVerify pointer is non-null and passes the connection ID plus `session+0x3ec` into `get_stream_keys`.
+- At `0x6b098–0x6b0a4`, it tests the returned status against zero. A nonzero result branches away to `0x6c334`, while a zero result continues at `0x6b0d8`.
+- On the success path `0x6b0d8–0x6b0f8`, it clears an eight-byte session field at `+0x980`, copies **32 bytes** from the local key buffer to session `+0x960`, and sets a ready byte at `+0x870` to one.
+- This demonstrates synchronous derivation, status checking and caller-owned key copying as a stock SETUP pattern. It does **not** establish that the alternate stream's connection ID is processed by stock SETUP (the hook filters it), or that the key material can be obtained after a failed SETUP. It does not fix the asynchronous session command calls.
+- Safe target design: derive independently for saved type-111 connID while inside a verified live synchronous setup context, put derived bytes directly into a heap-owned per-stream `sink_args` snapshot, wipe intermediate buffers and never read `session+0x3ec` from the sink thread. Only implement after reviewing how modern and legacy key modes are selected and how the asynchronous `showUI`/`forceKeyFrame` functions can be made session-safe.
+
 ## Current experimental hook risks
 
 1. `sink_thread` still holds `snapshot.session` and asynchronously calls `send_phone_cmd` (showUI and forceKeyFrame).
