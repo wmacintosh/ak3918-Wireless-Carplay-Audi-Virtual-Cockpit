@@ -64,6 +64,14 @@ Verified in `altscreen.c` (last executable revision `82613bf`):
 
 Read-only disassembly targets: `get_stream_keys` at `0x654c0`, `derive_screen` at `0x73e84`, and tail of the original SETUP handler at `0x6a60c`. Check whether the APIs require state populated *after* SETUP and whether they access the parent session outside the supplied subobject pointer.
 
+## Key derivation disassembly findings (2026-11-20)
+
+- `0x654c0` begins by loading `[r0]` into `r4` (`0x654c4`), where the hook currently supplies `session+0x3ec`. A null PairVerify object changes control flow. Subsequent calls and the return status must be established before presuming successful derivation after SETUP.
+- `0x73e84` constructs two connection-specific temporary strings with `asprintf`, then calls `0x73d9c` at `0x73f10`. It clears and frees those temporary strings afterward. The helper's input/output semantics and any session dependencies still require inspection.
+- The original SETUP function at `0x6a60c` is long; the inspected first `0x184` bytes show early input handling and state checks, not the exact point where PairVerify state is guaranteed ready.
+- A viable design must allocate immutable owned key/IV material within synchronous SETUP **only if** both derivation variants are verified available there, then remove *all* asynchronous dereferences of `snapshot.session` and safely address the `showUI`/`forceKeyFrame` dependency.
+- Do not move key derivation yet: doing so based only on these entry sequences risks deriving from missing or incomplete PairVerify state.
+
 ## Current experimental hook risks
 
 1. `sink_thread` still holds `snapshot.session` and asynchronously calls `send_phone_cmd` (showUI and forceKeyFrame).
