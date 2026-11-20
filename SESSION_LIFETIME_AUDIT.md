@@ -78,6 +78,15 @@ Read-only disassembly targets: `get_stream_keys` at `0x654c0`, `derive_screen` a
 - `0x654c0` dereferences the pointer supplied in `r0` immediately; the existing hook passes `session+0x3ec` and must not call it if the parent session can already be released. If the PairVerify pointer is null, its branch reaches an error/log path before the exit at `0x65658`. Success and missing-state codes remain to be interpreted.
 - Key derivation is not yet relocated. Need a firmware-derived guarantee that PairVerify state and the legacy secret are initialized by the end of the synchronous SETUP handler, plus a safe way to eliminate asynchronous `showUI` and `forceKeyFrame` dispatch.
 
+## PairVerify setter, cleanup and SETUP callsite confirmed (2026-11-20)
+
+- `0x672f0–0x67324` is the setter for the object stored at session `+0x3ec`. It retains a non-null incoming pointer through `0x82c74`, replaces the old pointer, and releases the old pointer through `0x82c78`. This proves **PairVerify object** ownership semantics, not parent-session retention.
+- `0x61254–0x61290` is a session-cleanup routine that sends an operation through session command channel `+0x3d0`, releases the PairVerify object through `0x82c78`, and clears `+0x3ec`.
+- The original SETUP handler at `0x6afdc` explicitly tests PairVerify pointer availability; at `0x6b068–0x6b094` it checks that pointer and the connection ID then invokes `get_stream_keys` (`0x654c0`) on `session+0x3ec`. This **proves the firmware calls modern key derivation during SETUP** for qualifying requests, rather than requiring the later asynchronous sink thread.
+- Important limit: `shim_session_setup` filters stream type 111 from the request **before** calling original SETUP. Thus the vendor's derivation at `0x6b094` might pertain to another retained stream/connection ID, not automatically type 111's `conn111`. The hook needs a separate, guarded derivation for type 111 with its own ID, and must respect unsupported/not-ready cases.
+- Executable source currently leaves the raw parent `session` in `sink_args`, and asynchronously calls `send_phone_cmd` for showUI/forceKeyFrame. The known CF retain API for PairVerify is **not** a license to retain the parent session the same way.
+- Before implementing even a compile-only patch, inspect the original SETUP's derivation result handling (`0x6b098–0x6b190`), and identify a safe, non-session command mechanism or an explicit session lifecycle guard for delayed commands. For a safe production path, no async parent-session dereferences may remain.
+
 ## Current experimental hook risks
 
 1. `sink_thread` still holds `snapshot.session` and asynchronously calls `send_phone_cmd` (showUI and forceKeyFrame).
