@@ -140,6 +140,16 @@ New read-only disassembly:
 
 Next read-only target: inspect caller-side guard and queue release mechanics of `0xa04bc` and the broader routine around `0x66b70`, plus the parent session allocator/free references, to establish an exclusion or retention contract. Do not flash.
 
+## Dispatch release-object refcount evidence (2026-11-20)
+
+User read-only disassembly:
+- `0xa04bc` handles a null object separately; non-null release at `0xa0500–0xa050c` calls `0xf0090` with `r0 = object+4`, `r1 = -1`, then branches on the return result. This is consistent with a decrement-and-test of a reference counter but the atomic helper's exact operation is unverified.
+- On the successful decrement path `0xa0514–0xa051c` the implementation checks `object+0x0c`; the actual destructor/queue wait behavior lies beyond the requested stop address `0xa0530`.
+- Session teardown at `0x66bc8–0x66bdc` invokes `0xa04bc` on `session+0x3d0` and nulls that field; other teardown code `0x67780–0x67788` synchronously dispatches through the queue before session cleanup.
+- **Unresolved:** a reference count for a *dispatch object* does not grant ownership of the parent session or make it safe to read its `+0x3d0` field from a detached thread. A preexisting valid reference is required before any decrement or enqueue. Continue leaving asynchronous `showUI` and `forceKeyFrame` disabled. The earlier zsh parse error was followed by a successful Docker command and is unrelated to ELF behavior.
+
+Next read-only work: inspect `0xa04bc–0xa0590` and `0xf0090–0xf0110` to prove the release helper's semantics and whether it can free a queue with outstanding synchronous callers. Then inspect the complete teardown/entry coordination; do not flash.
+
 ## Current experimental hook risks
 
 1. `sink_thread` still holds `snapshot.session` and asynchronously calls `send_phone_cmd` (showUI and forceKeyFrame).
