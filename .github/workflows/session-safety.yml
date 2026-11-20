@@ -1,0 +1,28 @@
+name: Experimental session safety (static)
+
+on:
+  push:
+    branches:
+      - "fix/**"
+  pull_request:
+    branches:
+      - main
+      - "fix/**"
+
+permissions:
+  contents: read
+
+jobs:
+  session-safety:
+    name: Static session safety
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Reject known unsafe asynchronous session accesses
+        run: python3 scripts/check_session_safety.py
+      - name: Explain validation scope
+        run: |
+          echo "This is static source regression checking only."
+          echo "It does not build firmware or prove runtime safety."
+          echo "Do not flash experimental artifacts based on this check."
