@@ -5,10 +5,18 @@
 - `0x673e4`: `ldrb ip, [r0, #974]` (`0x3ce`), dispatch guard; `0x673fc` loads command handle from session `+0x3d0`; `0x67408` calls `0xa2488`.
 - `0x67e00–0x67e04`: writes literal `1` to session `+0x3ce`; this is command-channel activation, **not** a session-alive guarantee.
 - `0x66df0`: stores created command-channel handle at session `+0x3d0`.
-- `0x66aec` and `0x6777c`: pass that handle to `0xa2488` on cleanup paths.
+- `0x66aec` and `0x6777c`: pass the channel handle to `0xa2488` during cleanup paths; **`0xa2488` is not proven to be a destructor**. Its body validates a dispatch object, sets up local mutex/condition-variable synchronization, and calls `0xa1900`.
 - `0x66bc8–0x66bdc`: frees command-channel handle via `0xa04bc` and zeros session `+0x3d0`. Commands racing teardown may dereference stale session or command-channel pointers.
 - `0x82c78` is a generic reference-counted CF-style release, but there is **no evidence** that the vendor session `r0` is a CF-style object. Do not apply it to a session without an object-type proof.
 - HTTP message `+0x904` callback and `+0x8fc` hook callback state have separate ownership; the vendor HTTP message's cleanup does not prove custom callback-state reclamation.
+
+## Follow-up disassembly: dispatch implementation (2026-11-20)
+
+- `0xa3448` calls `0xa1e6c`, and takes a path through `0xa0800` if no dispatch context is returned. The call alone does not establish a session retain.
+- `0xa240c` calls `a1e6c` and, on the null-context path, retrieves thread-specific data through `pthread_getspecific`.
+- `0xa2488` validates the channel object and an apparent count at `+4`; it prepares a stack-local mutex/condition variable, invokes `0xa1900` and then synchronizes. These steps suggest dispatch coordination, **not** standalone memory destruction or parent-session lifetime management.
+- No path yet establishes a retain/release API for the parent session pointer or any safe shutdown callback. Do not call these internal functions as guessed retain/release primitives.
+- Follow-up target: inspect `0xa1900` (queue/dispatch path) and the remaining part of `0xa2488` (`0xa26dc–0xa26f4`) to understand completion ordering. Separately trace which allocator/destructor owns the parent session allocation.
 
 ## Current experimental hook risks
 
@@ -26,8 +34,8 @@ A promising alternate architecture is copying necessary key material while synch
 
 ## Next stock binary questions
 
-1. Does `0xa2488` serialize command-channel operations and own an independent reference, or merely validate/run a request?
-2. Does `0xa3448` create an independently refcounted channel?
+1. Does `0xa1900` enqueue a callback, execute synchronously, or hold a reference until completion? What does the final `0xa2488` wait do?
+2. What does `0xa0800` release, and is that a dispatch-context reference rather than the command-channel object?
 3. Which function frees the **session allocation**, and does it notify all other threads before doing so?
 4. Does the vendor send-command operation retain its session internally on entry? If so, how is the entry itself protected from concurrent free?
 5. At what point in SETUP does `get_stream_keys` (at `0x654c0`) succeed?
@@ -41,7 +49,7 @@ docker run --rm --platform linux/arm64 \
   -v ak3918-buildroot-work:/workspace/buildroot-work/buildroot:ro \
   --entrypoint /bin/bash ak3918-buildroot:latest -c '
 OBJDUMP=/workspace/buildroot-work/buildroot/output/host/bin/arm-buildroot-linux-uclibcgnueabi-objdump
-for RANGE in "0xa3448 0xa3540" "0xa240c 0xa2488" "0xa2488 0xa26e0"; do
+for RANGE in "0xa1900 0xa1a80" "0xa26b0 0xa26f8" "0xa0800 0xa08c0"; do
   set -- $RANGE
   echo "=== $1 to $2 ==="
   "$OBJDUMP" -d --start-address="$1" --stop-address="$2" /stock/sdDongle
