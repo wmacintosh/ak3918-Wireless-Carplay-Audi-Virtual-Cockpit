@@ -105,6 +105,20 @@ Source changes in `altscreen.c`, commits `b282bca` and `5b85cb6`:
 - Remaining caveats: the SETUP hook's own parent-session access is not proven immune to concurrent firmware teardown; the cluster request/callback lifetime is separately unresolved; there is no device execution or successful compilation of this source change yet. **Do not flash**.
 - Next check: compile via existing Buildroot Docker with the experimental branch, then inspect exported symbols and cross-thread session accesses; do not invoke any firmware upload or flashing helper.
 
+## Build validation and remaining hazards (user build, 2026-11-20)
+
+The user fetched branch head `f187606` and built `libSdH-lifecycle-test.so` using the pinned Buildroot ARM/uClibc Docker compiler. The build script reported: **`PASS: ELF32 ARM, soft float, uClibc dependency, constructor, exported hook`**. This is compile/ELF validation only: no dongle upload, runtime, wireless stream test, or teardown stress test.
+
+Additional source inspection:
+- `sink_thread` no longer holds `snapshot.session`, and its frame loop checks generation without dereferencing the parent vendor session.
+- `open_alt_sink` still reads `session+0x8c` in the synchronous SETUP call path and uses generation/pointer equality. The source does not prove concurrent teardown cannot happen while SETUP runs.
+- `g_session_generation` increments only when `g_session != session`; pointer reuse or same-pointer reinitialization can escape logical invalidation. A generation check is not a retain.
+- `showUI` and `forceKeyFrame` are disabled. The handset may not start producing video or supply an IDR without them, so **build success is not feature success**.
+- The legacy `derive_screen` function returns void; there is no proven error result. Modern `get_stream_keys` has a checked status but stream IDs/state still require runtime verification.
+- `build_hook.py` validates format/ABI, SONAME, constructor and exported hook only. It does **not** validate vendor absolute-function signatures, session lifetime or screen behavior.
+
+Next gate: perform read-only build-artifact inspection (`readelf`, `objdump`, `nm`), and tighten warnings on an isolated local build, before considering controlled device testing. **Do not flash this branch.**
+
 ## Current experimental hook risks
 
 1. `sink_thread` still holds `snapshot.session` and asynchronously calls `send_phone_cmd` (showUI and forceKeyFrame).
