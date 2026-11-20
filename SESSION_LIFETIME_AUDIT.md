@@ -40,7 +40,7 @@ Inspect `0xa26f0–0xa275c` and the implementation of the callback passed throug
 
 ## Dispatch callback lookup target (2026-11-20)
 
-The `0xa2488` wrapper loads a PIC/GOT base into `r7`. The PC-relative base calculation at `0xa249c` yields `0x136000`; the literal at `0xa2758` has value `0x918`. Consequently `0xa26b8` reads the function pointer from **`0x136918`**, subsequently passing it in `r2` to `0xa1900` at `0xa26cc`. This is the strongest current candidate for the synchronous completion callback. Resolve the symbol or relocation at that GOT address, then disassemble its actual target; do not assume its purpose based on nearby functions.
+The `0xa2488` wrapper loads a PIC/GOT base into `r7`. The PC-relative base calculation at `0xa249c` yields `0x136000`; the literal at `0xa2758` has value `0x918`. Consequently `0xa26b8` reads the function pointer from **`0x136918`**, subsequently passing it in `r2` to `0xa1900` at `0xa26cc`. This is the strongest current candidate for the synchronous completion callback. The stock image's `.got` bytes at `0x136918` are `1c fb 09 00` (little-endian), giving the concrete callback address **`0x0009fb1c`**. `readelf -rW` showed no relocation for this slot. Disassemble `0x9fb1c` to identify its behavior; its address does not establish any retain of the parent CarPlay session.
 
 ## Current experimental hook risks
 
