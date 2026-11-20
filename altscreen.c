@@ -408,6 +408,7 @@ static int snapshot_alt_keys(void *session, uint64_t connid, struct sink_keys *o
 
 static void *sink_thread(void *arg) {
     struct sink_args snapshot = *(struct sink_args *)arg;
+    wipe_sink_keys(&((struct sink_args *)arg)->keys);
     free(arg);
     int srv = snapshot.srv;
     struct sink_keys keys = snapshot.keys;
@@ -437,7 +438,7 @@ static void *sink_thread(void *arg) {
     }
     dbg("sink accept success", c >= 0);
     close(srv);
-    if (c < 0) { dbg("alt accept fail", -1); return 0; }
+    if (c < 0) { dbg("alt accept fail", -1); wipe_sink_keys(&keys); return 0; }
     dbg("alt connected", -1);
     /* Deferred session commands disabled: no safe vendor ownership established. */
     unsigned char dctx[0x120];
@@ -600,6 +601,7 @@ static int open_alt_sink(void *session, unsigned generation,
     args->generation = generation;
     if (!session_is_current(session, generation)) {
         dbg("sink open expired before thread start", -1);
+        wipe_sink_keys(&args->keys);
         free(args);
         close(fd);
         return 0;
@@ -608,7 +610,7 @@ static int open_alt_sink(void *session, unsigned generation,
     dbg("sink thread create begin", 0);
     int thread_rc = pthread_create(&t, 0, sink_thread, args);
     dbg("sink thread create rc", thread_rc);
-    if (thread_rc != 0) { free(args); close(fd); return 0; }
+    if (thread_rc != 0) { wipe_sink_keys(&args->keys); free(args); close(fd); return 0; }
     pthread_detach(t);
     return port;
 }
