@@ -72,6 +72,12 @@ Read-only disassembly targets: `get_stream_keys` at `0x654c0`, `derive_screen` a
 - A viable design must allocate immutable owned key/IV material within synchronous SETUP **only if** both derivation variants are verified available there, then remove *all* asynchronous dereferences of `snapshot.session` and safely address the `showUI`/`forceKeyFrame` dependency.
 - Do not move key derivation yet: doing so based only on these entry sequences risks deriving from missing or incomplete PairVerify state.
 
+## Key helper confirmation (2026-11-20)
+
+- `0x73d9c` is a deterministic-looking helper for deriving 16-byte output material. It builds an intermediate state on the stack through functions `0xc6028`, `0xc60e8`, `0xc61ac`, then copies **16 bytes** to each nonnull output buffer (`0x73e00–0x73e0c` and `0x73e50–0x73e5c`). It clears 64 bytes of stack scratch before returning. This establishes output-buffer ownership and local scratch cleanup, **not** that calling it after SETUP is always safe. Verify its input-key lifetime.
+- `0x654c0` dereferences the pointer supplied in `r0` immediately; the existing hook passes `session+0x3ec` and must not call it if the parent session can already be released. If the PairVerify pointer is null, its branch reaches an error/log path before the exit at `0x65658`. Success and missing-state codes remain to be interpreted.
+- Key derivation is not yet relocated. Need a firmware-derived guarantee that PairVerify state and the legacy secret are initialized by the end of the synchronous SETUP handler, plus a safe way to eliminate asynchronous `showUI` and `forceKeyFrame` dispatch.
+
 ## Current experimental hook risks
 
 1. `sink_thread` still holds `snapshot.session` and asynchronously calls `send_phone_cmd` (showUI and forceKeyFrame).
