@@ -38,6 +38,10 @@ Inspect `0xa26f0–0xa275c` and the implementation of the callback passed throug
 - The argument at `0xa26b8–0xa26cc` is a function pointer loaded from a global table (`r7` base plus the literal offset `0x918`); resolve its actual callback target before attributing completion semantics.
 - The parent CarPlay session remains *unretained*. No evidence supports installing a guessed release or retain hook, and no on-dongle test is authorized.
 
+## Dispatch callback lookup target (2026-11-20)
+
+The `0xa2488` wrapper loads a PIC/GOT base into `r7`. The PC-relative base calculation at `0xa249c` yields `0x136000`; the literal at `0xa2758` has value `0x918`. Consequently `0xa26b8` reads the function pointer from **`0x136918`**, subsequently passing it in `r2` to `0xa1900` at `0xa26cc`. This is the strongest current candidate for the synchronous completion callback. Resolve the symbol or relocation at that GOT address, then disassemble its actual target; do not assume its purpose based on nearby functions.
+
 ## Current experimental hook risks
 
 1. `sink_thread` still holds `snapshot.session` and asynchronously calls `send_phone_cmd` (showUI and forceKeyFrame).
