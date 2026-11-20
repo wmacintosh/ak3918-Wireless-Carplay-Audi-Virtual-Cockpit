@@ -378,15 +378,40 @@ static int readn(int fd, void *buf, int n, unsigned generation) {
     return 0;
 }
 
-struct sink_args { int srv; void *session; uint64_t connid; int have_connid; unsigned generation; };
+/* Compile-only experiment: owned encryption state; no session pointer in sink args.
+   showUI and forceKeyFrame intentionally disabled until lifetime-safe routing exists. */
+enum sink_cipher_kind { SINK_CIPHER_NONE, SINK_CIPHER_CHACHA, SINK_CIPHER_AES };
+struct sink_keys {
+    enum sink_cipher_kind kind;
+    unsigned char key[32];
+    unsigned char iv[16];
+};
+struct sink_args { int srv; unsigned generation; struct sink_keys keys; };
+static void wipe_sink_keys(struct sink_keys *keys) {
+    volatile unsigned char *p = (volatile unsigned char *)keys;
+    for (size_t i = 0; i < sizeof(*keys); ++i) p[i] = 0;
+}
+static int snapshot_alt_keys(void *session, uint64_t connid, struct sink_keys *out) {
+    memset(out, 0, sizeof(*out));
+    if (!session || !connid) return 0;
+    if (*(void **)((char *)session + 0x3ec)) {
+        int rc = get_stream_keys((char *)session + 0x3ec, 0, connid, 0, 0, out->key);
+        dbg("setup alt chacha keys rc", rc);
+        if (rc != 0) { wipe_sink_keys(out); return 0; }
+        out->kind = SINK_CIPHER_CHACHA;
+    } else {
+        derive_screen((char *)session + 0x200, 0x10, connid, out->key, out->iv);
+        out->kind = SINK_CIPHER_AES;
+    }
+    return 1;
+}
 
 static void *sink_thread(void *arg) {
     struct sink_args snapshot = *(struct sink_args *)arg;
     free(arg);
     int srv = snapshot.srv;
-    void *session = snapshot.session;
-    uint64_t connid = snapshot.connid;
-    int have_connid = snapshot.have_connid;
+    struct sink_keys keys = snapshot.keys;
+    wipe_sink_keys(&snapshot.keys);
     dbg("alt sink thread up", -1);
     dbg("sink accept begin", 0);
     int c = -1;
@@ -414,51 +439,14 @@ static void *sink_thread(void *arg) {
     close(srv);
     if (c < 0) { dbg("alt accept fail", -1); return 0; }
     dbg("alt connected", -1);
-    if (!session_is_current(session, snapshot.generation)) {
-        dbg("sink stale session before showUI", -1);
-        close(c);
-        return 0;
-    }
-    {
-        dbg("sink showUI begin", 0);
-        int sr = send_phone_cmd(session, "showUI", 1);
-        dbg("alt showUI err", sr);
-    }
-
+    /* Deferred session commands disabled: no safe vendor ownership established. */
     unsigned char dctx[0x120];
     unsigned char cctx[0x200] __attribute__((aligned(8)));
-    unsigned char cckey[32], ccnonce[8];
-    int dec_ready = 0, chacha = 0;
-    /* Generation checks narrow the race, but the vendor session pointer is
-       not retained: true lifetime safety requires a verified vendor API. */
-    if (!session_is_current(session, snapshot.generation)) {
-        dbg("sink session changed before keys", -1);
-        close(c);
-        return 0;
-    }
-    dbg("sink pairVerify lookup begin", session != 0);
-    void *pvs = session ? *(void **)((char *)session + 0x3ec) : 0;
-    dbg("alt pairVerifySession set", pvs ? 1 : 0);
-    if (pvs && have_connid && connid != 0) {
-        dbg("sink key setup begin", 0);
-        int rc = get_stream_keys((char *)session + 0x3ec, 0, connid, 0, 0, cckey);
-        dbg("alt chacha keys rc", rc);
-        if (rc == 0) {
-            memset(ccnonce, 0, sizeof ccnonce);
-            dec_ready = 1;
-            chacha = 1;
-        }
-    } else if (have_connid && session && connid != 0) {
-        unsigned char key[16], iv[16];
-        dbg("sink legacy derive begin", 0);
-        derive_screen((char *)session + 0x200, 0x10, connid, key, iv);
-        dbg("sink legacy cipher init begin", 0);
-        aesctr_init(dctx, key, iv);
-        dec_ready = 1;
-        dbg("alt decrypt ready", -1);
-    } else {
-        dbg("alt no connID", have_connid);
-    }
+    unsigned char ccnonce[8] = {0};
+    int dec_ready = keys.kind != SINK_CIPHER_NONE;
+    int chacha = keys.kind == SINK_CIPHER_CHACHA;
+    if (keys.kind == SINK_CIPHER_AES) aesctr_init(dctx, keys.key, keys.iv);
+    dbg("sink using owned stream keys", (int)keys.kind);
 
     unsigned char hdr[128];
     unsigned char *body = 0;
@@ -471,7 +459,7 @@ static void *sink_thread(void *arg) {
     int cfg_sent = 0, got_idr = 0, wait_idr = 0, send_failed = 0;
     dbg("sink first header read begin", 0);
     for (;;) {
-        if (!session_is_current(session, snapshot.generation)) {
+        if (!generation_is_current(snapshot.generation)) {
             dbg("sink session changed", -1);
             break;
         }
@@ -498,7 +486,7 @@ static void *sink_thread(void *arg) {
             break;
         }
         if (trace_frame) dbg("sink payload read complete type", ftype);
-        if (!session_is_current(session, snapshot.generation)) {
+        if (!generation_is_current(snapshot.generation)) {
             dbg("sink session changed after read", -1);
             break;
         }
@@ -512,7 +500,7 @@ static void *sink_thread(void *arg) {
                 if (bodylen < 16) continue;
                 int err = 0;
                 if (trace_video) dbg("sink cipher init begin", 0);
-                cc_init(cctx, cckey, ccnonce);
+                cc_init(cctx, keys.key, ccnonce);
                 if (trace_video) dbg("sink cipher header begin", 0);
                 cc_aad(cctx, hdr, 128);
                 if (trace_video) dbg("sink cipher decrypt begin", 0);
@@ -544,12 +532,7 @@ static void *sink_thread(void *arg) {
                 if (!got_idr && has_idr(body, bodylen)) { got_idr = 1; dbg("alt idr after frames", wait_idr); }
                 if (!got_idr) {
                     if ((wait_idr++ % 120) == 0) {
-                        if (!session_is_current(session, snapshot.generation)) {
-                            dbg("sink session changed before keyframe", -1);
-                            break;
-                        }
-                        int kr = send_phone_cmd(session, "forceKeyFrame", 0);
-                        dbg("alt force keyframe err", kr < 0 ? -kr : kr);
+                        dbg("sink awaiting IDR; request disabled", wait_idr);
                     }
                     continue;
                 }
@@ -590,12 +573,13 @@ static void *sink_thread(void *arg) {
     dbg("alt stream end frames", (int)frames);
     free(body);
     free(cfg_body);
+    wipe_sink_keys(&keys);
     close(c);
     return 0;
 }
 
 static int open_alt_sink(void *session, unsigned generation,
-                         uint64_t connid, int have_connid) {
+                         const struct sink_keys *keys) {
     if (!session_is_current(session, generation)) {
         dbg("sink open rejected stale session", -1);
         return 0;
@@ -612,9 +596,7 @@ static int open_alt_sink(void *session, unsigned generation,
     struct sink_args *args = (struct sink_args *)malloc(sizeof(*args));
     if (!args) { close(fd); dbg("sink args malloc fail", -1); return 0; }
     args->srv = fd;
-    args->session = session;
-    args->connid = connid;
-    args->have_connid = have_connid;
+    args->keys = *keys;
     args->generation = generation;
     if (!session_is_current(session, generation)) {
         dbg("sink open expired before thread start", -1);
@@ -719,7 +701,13 @@ int shim_session_setup(void *session, void *req, void **resp_out) {
         dbg("setup expired after original handler", -1);
         return rc;
     }
-    int port = open_alt_sink(session, generation, conn111, conn111 != 0);
+    struct sink_keys alt_keys;
+    if (!snapshot_alt_keys(session, conn111, &alt_keys)) {
+        dbg("alt key snapshot unavailable; stream not advertised", -1);
+        return rc;
+    }
+    int port = open_alt_sink(session, generation, &alt_keys);
+    wipe_sink_keys(&alt_keys);
     if (port <= 0) { dbg("alt sink fail", -1); return rc; }
     dbg("setup response entry create begin", 0);
     void *entry = cf_dict_create_mutable(0, 0, dict_key_cb, dict_val_cb);
