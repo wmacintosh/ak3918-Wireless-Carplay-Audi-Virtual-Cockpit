@@ -158,6 +158,14 @@ Next read-only work: inspect `0xa04bc–0xa0590` and `0xf0090–0xf0110` to prov
 - Existing compile-only hook continues to exclude `session` from asynchronous sink arguments and disables delayed `showUI`/`forceKeyFrame` commands.
 - Next target: inspect where `object+0x0c` destructor pointers are installed (queue constructor near `0xa0800`) and inspect the target destructor's behavior, especially outstanding work handling and worker-thread shutdown. Do not flash.
 
+## Queue construction and callback drain (2026-11-20)
+
+- `0xa0800` allocates a 132-byte queue structure via `calloc(1,132)`. `0xa0860–0xa0864` sets the initial type and reference count of one. `0xa0868–0xa0874` resolves a function pointer through a GOT-relative load and installs it into object `+0x0c` (destructor used by final release at `0xa0550–0xa0560`).
+- `0xa0880–0xa0884` initializes the work linked-list tail; `0xa08a4–0xa08b4` initializes the mutex.
+- `0xa05fc–0xa0638` shows the concurrent drain worker locking the queue mutex, removing work, then unlocking. `0xa0660–0xa0670` invokes the stored work function `[item+4]` with argument `[item+8]`, then frees the work item. The callback runs **outside** the mutex.
+- The destructor target is **not yet resolved**: retrieve the literal at `0xa0920`, compute the GOT effective address using the PIC base, inspect the slot contents, and disassemble that function. Do not equate `__dispatch_queue_concurrent_drain` with the destructor without confirming the pointer target.
+- The queue mutex does not in itself prove that shutdown blocks new submissions or waits for running callbacks. No parent-session ownership guarantee is established. Do not flash.
+
 ## Current experimental hook risks
 
 1. `sink_thread` still holds `snapshot.session` and asynchronously calls `send_phone_cmd` (showUI and forceKeyFrame).
