@@ -30,6 +30,14 @@
 
 Inspect `0xa26f0–0xa275c` and the implementation of the callback passed through the literal loaded at `0xa26b0` to establish how the synchronous waiter is signalled and whether a dispatcher reference is retained. Then trace parent-session allocation/destruction separately.
 
+## Wait and signaling follow-up (2026-11-20)
+
+- The `0xa2488` wrapper calls `pthread_cond_wait` at `0xa26ec` and loops to retest a stack-local completion flag at `0xa26d8`. This is clear synchronous waiting, but does not establish the callback that sets the flag.
+- `0xa18d8` performs two calls through internal dispatch-related functions (`0x8f564`, `0x8f078`); it is **not yet identified** as the waiter completion callback.
+- `0xa1aa0–0xa1b1c` checks dispatch queue state and exits via an unlock path. It does not independently prove the requested callback has executed or retained the parent session.
+- The argument at `0xa26b8–0xa26cc` is a function pointer loaded from a global table (`r7` base plus the literal offset `0x918`); resolve its actual callback target before attributing completion semantics.
+- The parent CarPlay session remains *unretained*. No evidence supports installing a guessed release or retain hook, and no on-dongle test is authorized.
+
 ## Current experimental hook risks
 
 1. `sink_thread` still holds `snapshot.session` and asynchronously calls `send_phone_cmd` (showUI and forceKeyFrame).
