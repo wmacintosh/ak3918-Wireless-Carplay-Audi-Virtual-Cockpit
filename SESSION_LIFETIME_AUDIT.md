@@ -150,6 +150,14 @@ User read-only disassembly:
 
 Next read-only work: inspect `0xa04bc–0xa0590` and `0xf0090–0xf0110` to prove the release helper's semantics and whether it can free a queue with outstanding synchronous callers. Then inspect the complete teardown/entry coordination; do not flash.
 
+## Atomic dispatch reference counting confirmed (2026-11-20)
+
+- `0xf0090` is a CAS-retry atomic-add helper: reads `[r0]`, adds the delta from `r1`, calls the target held in `r6`, retries while the return indicates failure, and returns the new value. The literal loaded at `0xf00c4` is `0xffff0fc0`, the ARM Linux userspace cmpxchg helper address.
+- At `0xa0500–0xa050c`, `0xa04bc` calls `0xf0090(object+4,-1)` to decrement the dispatch object's reference count. It returns if the new count is nonzero. At zero, `0xa0514–0xa0560` reads the function pointer at `object+0x0c` and tail-calls it as a destructor, with a diagnostic path for null destructor pointers.
+- The dispatcher is therefore **reference-counted**, but this does not establish thread-safe acquisition of a reference from a session-owned pointer or queue shutdown/drain semantics. Never call `f0090` with a borrowed pointer whose memory may already be freed; incrementing after destruction is a use-after-free.
+- Existing compile-only hook continues to exclude `session` from asynchronous sink arguments and disables delayed `showUI`/`forceKeyFrame` commands.
+- Next target: inspect where `object+0x0c` destructor pointers are installed (queue constructor near `0xa0800`) and inspect the target destructor's behavior, especially outstanding work handling and worker-thread shutdown. Do not flash.
+
 ## Current experimental hook risks
 
 1. `sink_thread` still holds `snapshot.session` and asynchronously calls `send_phone_cmd` (showUI and forceKeyFrame).
