@@ -95,6 +95,16 @@ Read-only disassembly targets: `get_stream_keys` at `0x654c0`, `derive_screen` a
 - This demonstrates synchronous derivation, status checking and caller-owned key copying as a stock SETUP pattern. It does **not** establish that the alternate stream's connection ID is processed by stock SETUP (the hook filters it), or that the key material can be obtained after a failed SETUP. It does not fix the asynchronous session command calls.
 - Safe target design: derive independently for saved type-111 connID while inside a verified live synchronous setup context, put derived bytes directly into a heap-owned per-stream `sink_args` snapshot, wipe intermediate buffers and never read `session+0x3ec` from the sink thread. Only implement after reviewing how modern and legacy key modes are selected and how the asynchronous `showUI`/`forceKeyFrame` functions can be made session-safe.
 
+## Compile-only key snapshot implementation (2026-11-20)
+
+Source changes in `altscreen.c`, commits `b282bca` and `5b85cb6`:
+- Introduces `struct sink_keys` and snapshots modern 32-byte stream keys or legacy 16-byte key/IV during `shim_session_setup` after successful original SETUP, using saved type-111 connection ID.
+- Refuses to advertise an alternate stream if there is no connection ID or the modern key derivation fails. The legacy helper is assumed to return generated material (its signature returns void); the code cannot directly verify legacy success.
+- `sink_args` carries only the owned key material and generation, **not the vendor parent-session pointer**. The sink thread no longer reads session `+0x3ec` or `+0x200`.
+- Removes all sink-thread invocations of `send_phone_cmd` for `showUI` and `forceKeyFrame`: they are intentionally **disabled**, not safely replaced. This may prevent video startup or IDR recovery. Key and IV buffers are wiped from heap snapshots and ordinary sink exit paths.
+- Remaining caveats: the SETUP hook's own parent-session access is not proven immune to concurrent firmware teardown; the cluster request/callback lifetime is separately unresolved; there is no device execution or successful compilation of this source change yet. **Do not flash**.
+- Next check: compile via existing Buildroot Docker with the experimental branch, then inspect exported symbols and cross-thread session accesses; do not invoke any firmware upload or flashing helper.
+
 ## Current experimental hook risks
 
 1. `sink_thread` still holds `snapshot.session` and asynchronously calls `send_phone_cmd` (showUI and forceKeyFrame).
