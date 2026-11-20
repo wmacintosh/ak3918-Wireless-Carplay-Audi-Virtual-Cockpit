@@ -119,6 +119,17 @@ Additional source inspection:
 
 Next gate: perform read-only build-artifact inspection (`readelf`, `objdump`, `nm`), and tighten warnings on an isolated local build, before considering controlled device testing. **Do not flash this branch.**
 
+## Read-only ELF validation of compile-only hook (2026-11-20)
+
+The user inspected the locally built `libSdH-lifecycle-test.so`:
+- `ELF32`, `ARM`, `Version5 EABI`, **soft-float ABI** (`Flags: 0x5000200`).
+- `NEEDED: libc.so.0`, `SONAME: libSdH.so`, `INIT_ARRAY: 0x5e60`, `INIT_ARRAYSZ: 8`.
+- `shim_session_setup` exported as a global function at relative VA `0x1c64`; `sink_thread` present as a local function at `0x2904`.
+- No dynamic `TEXTREL` entry was reported.
+- Library size **27,024 bytes**.
+- `snapshot_alt_keys` does not show as a separately named function, consistent with optimization/inlining but not a proof of execution behavior.
+- These checks do not verify invocation arguments for vendor functions, key correctness, absence of runtime UAF, or that the phone supplies video without deferred commands. **Do not flash**.
+
 ## Current experimental hook risks
 
 1. `sink_thread` still holds `snapshot.session` and asynchronously calls `send_phone_cmd` (showUI and forceKeyFrame).
