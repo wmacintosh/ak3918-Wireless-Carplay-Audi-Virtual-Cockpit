@@ -44,7 +44,7 @@ try:
             failures.append("sink_args must not retain vendor session/connection pointers")
         if "struct sink_keys keys" not in fields:
             failures.append("sink_args must own a stream-key snapshot")
-    sink = body_of(r"static\s+void\s*\s*sink_thread\s*\(void\s*arg\)")
+    sink = body_of(r"static\s+void\s*\*\s*sink_thread\s*\(void\s*arg\)")
     banned = (
         (r"\bsend_phone_cmd\s*\(", "delayed vendor phone-command dispatch"),
         (r"\bsession_send_command\s*\(", "direct delayed session command"),
