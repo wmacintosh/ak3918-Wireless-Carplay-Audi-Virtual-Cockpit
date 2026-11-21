@@ -24,7 +24,7 @@ jobs:
           cc -std=gnu11 -Wall -Wextra -Werror -fsyntax-only -DAK_ENABLE_COMBINED_CLUSTER=1 altscreen.c
       - name: Step 115 request tracking helper checks
         run: python3 tests/run_step115_host.py
-      - name: Step 120 send gate and expected orphan-association diagnostic
+      - name: Step 120/123 native request identity and stock-isolation checks
         run: python3 tests/run_step120_host.py
       - name: Step 121 Docker shell quoting regression test
         run: |
@@ -34,9 +34,13 @@ jobs:
         run: |
           python3 -m py_compile scripts/step122_native_request_paths.py tests/test_step122_paths.py
           python3 tests/test_step122_paths.py
+      - name: Step 125 deterministic teardown-send race (expected unsafe behavior)
+        run: |
+          bash -n scripts/step125_extract_native_transport.sh
+          python3 tests/run_step125_teardown_race.py
       - name: Report safety limitations
         if: always()
         run: |
           echo "Source-only host tests. No target ARM ABI, device runtime, or teardown/send race verification."
-          echo "The Step 120 diagnostic currently reproduces an unsafe orphaned request association."
+          echo "Step 123 prevents the tested orphan misassociation; Step 125 still reproduces a send-after-teardown race."
           echo "AK_ENABLE_COMBINED_CLUSTER must remain disabled for normal stock/recovery use."
