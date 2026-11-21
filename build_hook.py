@@ -12,6 +12,21 @@ BASE_VA = 0x10000
 SETUP_VA = 0x0006a60c
 HOOK_PTR_VA = 0x001369fc  # Unused 4-byte tail at end of .got (file offset 0x1169fc)
 
+FINALIZER_ORIG_VA = 0x00066A40
+FINALIZER_CALLBACK_VA = 0x00134078  # CFRuntimeClass: AirPlayReceiverSession.finalize
+FINALIZER_PTR_SLOT_VA = 0x0013C640  # New zero-initialized .bss word
+FINALIZER_CLASSNAME_VA = 0x001028B4
+
+# Explicit experimental opt-in. In normal mode NO outgoing screen SETUP is
+# modified, and the detached cluster HTTP path has been removed from the C shim.
+ENABLE_COMBINED_CLUSTER = os.environ.get("AK_ENABLE_COMBINED_CLUSTER") == "1"
+STREAM_HOOK_BL_VA = 0x0002FADC
+STREAM_HOOK_OLD_BL = 0xEB018DE6  # stock BL 0x9327C
+SEND_HOOK_BL_VA = 0x0002FBB0
+SEND_HOOK_OLD_BL = 0xEB01DB6F    # stock BL 0xA6974
+STREAM_HOOK_PTR_VA = 0x0013C644
+SEND_HOOK_PTR_VA = 0x0013C648
+
 ALTSCREEN_PATCHES = [
     (0x03b43c, 0x0a000002, 0xea000002, "nostrip: keep all displays in /info"),
     (0x03c2e0, 0x1a000009, 0xea000009, "enabledFeatures: always create array"),
@@ -41,6 +56,9 @@ def validate_uclibc_hook(path):
     symbols = inspect("-sW")
     if "shim_session_setup" not in symbols:
         raise SystemExit("hook missing shim_session_setup")
+    if ENABLE_COMBINED_CLUSTER:
+        if "shim_screen_ensure_stream" not in symbols or "shim_screen_http_send" not in symbols:
+            raise SystemExit("experimental screen hook exports missing")
     if not any("INIT_ARRAY" in l for l in dynamic.splitlines()):
         raise SystemExit("hook missing constructor initialization array")
     print("PASS: ELF32 ARM, soft float, uClibc dependency, constructor, exported hook")
@@ -60,6 +78,7 @@ def build_shim(out):
     # Do not use -nostdlib: the target compiler must select its native uClibc.
     subprocess.run(command + [
         "-mcpu=arm926ej-s", "-mfloat-abi=soft", "-shared", "-fPIC", "-Os",
+        "-DAK_ENABLE_COMBINED_CLUSTER=" + ("1" if ENABLE_COMBINED_CLUSTER else "0"),
         "-fno-unwind-tables", "-fno-asynchronous-unwind-tables",
         "-Wl,-soname," + SHIM_SO,
         "-o", out, SHIM_C, "-lpthread",
@@ -103,6 +122,40 @@ def find_aligned_zero_gap(d, secs, need):
         else:
             run = 0
     raise SystemExit("no zero gap in .rodata")
+
+PF_X = 1
+PF_W = 2
+PF_R = 4
+
+def va_to_file_off(d, va, length, require_flags=0):
+    """Resolve a file-backed PT_LOAD virtual address; reject ambiguous mappings."""
+    if va < 0 or length <= 0 or va + length > (1 << 32):
+        raise SystemExit("invalid ELF virtual-address range")
+    if d[:4] != b"\x7fELF" or d[4] != 1 or d[5] != 1:
+        raise SystemExit("not a little-endian ELF32 executable")
+    phoff = struct.unpack_from("<I", d, 28)[0]
+    phentsz = struct.unpack_from("<H", d, 42)[0]
+    phnum = struct.unpack_from("<H", d, 44)[0]
+    if phentsz != 32 or phoff + phentsz * phnum > len(d):
+        raise SystemExit("invalid ELF program-header table")
+    hits = []
+    for i in range(phnum):
+        po = phoff + i * phentsz
+        typ, off, start, _paddr, filesz, _memsz, flags, _align = (
+            struct.unpack_from("<8I", d, po)
+        )
+        if (typ == 1 and (flags & require_flags) == require_flags
+                and start <= va and va + length <= start + filesz):
+            result = off + va - start
+            if result + length > len(d):
+                raise SystemExit("ELF mapping exceeds file size")
+            hits.append(result)
+    if len(hits) != 1:
+        raise SystemExit(
+            f"expected one file-backed PT_LOAD for {va:#x} ({length} bytes), "
+            f"found {len(hits)}"
+        )
+    return hits[0]
 
 def patch_sddongle(src, dst):
     d = bytearray(open(src, "rb").read())
@@ -171,6 +224,99 @@ def patch_sddongle(src, dst):
     struct.pack_into("<iI", d, dynoff + nulls[1] * 8, 29, off_runpath)
     print(f"injected DT_NEEDED + DT_RUNPATH into slots {nulls[0]},{nulls[1]}")
 
+    # 4. Confirm this is the AirPlayReceiverSession CFRuntimeClass table.
+    class_off = va_to_file_off(d, FINALIZER_CLASSNAME_VA, 24, require_flags=PF_R)
+    if bytes(d[class_off:class_off + 23]).split(b"\0", 1)[0] != b"AirPlayReceiverSession":
+        raise SystemExit("unexpected AirPlayReceiverSession class name")
+    callback_off = va_to_file_off(d, FINALIZER_CALLBACK_VA, 4, require_flags=PF_R | PF_W)
+    orig_cb = struct.unpack_from("<I", d, callback_off)[0]
+    if orig_cb != FINALIZER_ORIG_VA:
+        raise SystemExit(f"unexpected finalizer callback {orig_cb:#x}")
+    relro_contains_cb = False
+    phoff = struct.unpack_from("<I", d, 28)[0]
+    phentsz = struct.unpack_from("<H", d, 42)[0]
+    phnum = struct.unpack_from("<H", d, 44)[0]
+    for i in range(phnum):
+        po = phoff + i * phentsz
+        if struct.unpack_from("<I", d, po)[0] == 0x6474E552:  # PT_GNU_RELRO
+            va, memsz = struct.unpack_from("<2I", d, po + 8)[0], struct.unpack_from("<I", d, po + 20)[0]
+            if va <= FINALIZER_CALLBACK_VA and FINALIZER_CALLBACK_VA + 4 <= va + memsz:
+                relro_contains_cb = True
+    if not relro_contains_cb:
+        raise SystemExit("finalizer table is not in expected GNU RELRO segment")
+
+    # 5. Reserve a separate pointer at the end of .bss, without growing the file.
+    bss_va, _bss_off, bss_sz = secs[".bss"]
+    if (bss_va, bss_sz, bss_va + bss_sz) != (0x13A6B0, 0x1F90, FINALIZER_PTR_SLOT_VA):
+        raise SystemExit("unexpected .bss bounds; refusing extension")
+    shoff = struct.unpack_from("<I", d, 32)[0]
+    shentsz = struct.unpack_from("<H", d, 46)[0]
+    shnum = struct.unpack_from("<H", d, 48)[0]
+    bss_headers = []
+    for i in range(shnum):
+        po = shoff + i * shentsz
+        typ, addr, size = (struct.unpack_from("<I", d, po + 4)[0],
+                           struct.unpack_from("<I", d, po + 12)[0],
+                           struct.unpack_from("<I", d, po + 20)[0])
+        if typ == 8 and addr == bss_va and size == bss_sz:
+            bss_headers.append(po)
+    if len(bss_headers) != 1:
+        raise SystemExit("expected one matching .bss section header")
+
+    rw_headers = []
+    for i in range(phnum):
+        po = phoff + i * phentsz
+        typ, _off, va, _pa, filesz, memsz, flags, align = struct.unpack_from("<8I", d, po)
+        if typ == 1 and flags == PF_R | PF_W and va <= FINALIZER_PTR_SLOT_VA <= va + memsz:
+            rw_headers.append((po, va, filesz, memsz, align))
+    if len(rw_headers) != 1:
+        raise SystemExit("expected one matching writable LOAD segment")
+    rw_po, rw_va, rw_filesz, rw_memsz, rw_align = rw_headers[0]
+    if (rw_va, rw_filesz, rw_memsz, rw_align) != (0x133FEC, 0x66C4, 0x8654, 0x10000):
+        raise SystemExit("unexpected writable LOAD layout; refusing extension")
+    extension = 12 if ENABLE_COMBINED_CLUSTER else 4
+    if rw_va + rw_memsz != FINALIZER_PTR_SLOT_VA or FINALIZER_PTR_SLOT_VA + extension > 0x13D000:
+        raise SystemExit("cannot safely reserve hook pointers")
+
+    struct.pack_into("<I", d, bss_headers[0] + 20, bss_sz + extension)
+    struct.pack_into("<I", d, rw_po + 20, rw_memsz + extension)
+    print(f"reserved {extension} bytes of hook pointer slots from {FINALIZER_PTR_SLOT_VA:#x}")
+
+    # 6. Place a second independent ARM trampoline in the executable zero gap.
+    fin_va, fin_off = find_aligned_zero_gap(d, secs, 12)
+    if fin_off < tramp_off + 12 and tramp_off < fin_off + 12:
+        raise SystemExit("finalizer trampoline overlaps setup trampoline")
+    if va_to_file_off(d, fin_va, 12, require_flags=PF_R | PF_X) != fin_off:
+        raise SystemExit("finalizer trampoline mapping mismatch")
+    struct.pack_into("<3I", d, fin_off, 0xE59FC000, 0xE59CF000, FINALIZER_PTR_SLOT_VA)
+    struct.pack_into("<I", d, callback_off, fin_va)
+    print(f"patched finalizer callback {FINALIZER_CALLBACK_VA:#x}: "
+          f"{FINALIZER_ORIG_VA:#x} -> {fin_va:#x}")
+
+    if ENABLE_COMBINED_CLUSTER:
+        # Two independent callsite hooks. These branch targets are 12-byte ARM
+        # indirect trampolines into zero-initialized .bss callback pointer slots.
+        # All stock instruction words must match exactly before ANY patching.
+        def install_screen_hook(call_va, old_bl, ptr_va, label):
+            call_off = va_to_file_off(d, call_va, 4, require_flags=PF_R | PF_X)
+            current = struct.unpack_from("<I", d, call_off)[0]
+            if current != old_bl:
+                raise SystemExit(f"unexpected {label} BL @{call_va:#x}: {current:#010x}")
+            hook_va, hook_off = find_aligned_zero_gap(d, secs, 12)
+            if va_to_file_off(d, hook_va, 12, require_flags=PF_R | PF_X) != hook_off:
+                raise SystemExit(f"{label} trampoline is not in executable mapped memory")
+            struct.pack_into("<3I", d, hook_off, 0xE59FC000, 0xE59CF000, ptr_va)
+            disp = hook_va - (call_va + 8)
+            if disp % 4 or not -(1 << 25) <= disp < (1 << 25):
+                raise SystemExit(f"{label} ARM branch is out of range")
+            patched_bl = 0xEB000000 | ((disp >> 2) & 0xFFFFFF)
+            struct.pack_into("<I", d, call_off, patched_bl)
+            print(f"EXPERIMENTAL {label}: {call_va:#x} -> {hook_va:#x}; ptr {ptr_va:#x}")
+        install_screen_hook(STREAM_HOOK_BL_VA, STREAM_HOOK_OLD_BL,
+                            STREAM_HOOK_PTR_VA, "combined stream construction")
+        install_screen_hook(SEND_HOOK_BL_VA, SEND_HOOK_OLD_BL,
+                            SEND_HOOK_PTR_VA, "combined screen HTTP send")
+
     open(dst, "wb").write(d)
     print("sdDongle md5", hashlib.md5(d).hexdigest())
 
@@ -196,7 +342,13 @@ def main():
     patch_sddongle(os.path.join(SRC, "sdDongle"), os.path.join(DST, "sdDongle"))
     from repair_elf import repair
     print("relocated dynamic string table", repair(os.path.join(DST, "sdDongle")))
-    make_tar(DST)
+    # This integration is a source-level experiment; an output executable does
+    # not establish runtime safety. Do not emit a flashable tar by default.
+    if os.environ.get("AK_STEP100_ALLOW_UNVERIFIED_PACKAGE") == "1":
+        print("WARNING: explicitly packaging an UNVERIFIED Step 100 build")
+        make_tar(DST)
+    else:
+        print("Step 100: NO flashable tar generated (runtime tests required).")
 
 if __name__ == "__main__":
     main()
