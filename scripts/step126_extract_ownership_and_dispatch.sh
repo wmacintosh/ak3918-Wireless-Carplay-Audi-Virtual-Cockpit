@@ -2,7 +2,7 @@
 # Step 126: read-only inspection of HTTP retain/release and queue wake paths.
 set -euo pipefail
 
-if [[ -n "\${AK3918_ROOT:-}" ]]; then
+if [[ -n "${AK3918_ROOT:-}" ]]; then
     ROOT="$AK3918_ROOT"
 elif [[ -f "$HOME/AK3918_Diagnostics/stock_analysis/sdDongle" ]]; then
     ROOT="$HOME/AK3918_Diagnostics"
@@ -10,7 +10,7 @@ else
     ROOT="$HOME/AK3918/01_Development/AK3918_Diagnostics/ak3918-sigsegv-fix"
 fi
 STOCK="$ROOT/stock_analysis/sdDongle"
-REPORT="\${1:-$HOME/Desktop/AK3918_step126_ownership_and_dispatch.txt}"
+REPORT="${1:-$HOME/Desktop/AK3918_step126_ownership_and_dispatch.txt}"
 EXPECTED="b2e32b82a37667500ca4f1c8266604bf28cc923ac94343907eb68c843d92e0a1"
 
 if [[ ! -f "$STOCK" ]]; then
