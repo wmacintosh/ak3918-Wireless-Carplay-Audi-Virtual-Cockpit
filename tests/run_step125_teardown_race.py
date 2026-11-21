@@ -109,6 +109,6 @@ with tempfile.TemporaryDirectory(prefix='ak3918-step125-') as temp:
     exe = Path(temp) / 'race'
     subprocess.run([
         'cc', '-std=gnu11', '-O1', '-g', '-Wall', '-Wextra', '-Werror',
-        '-pthread', str(cfile), '-o', str(exe)
+        '-pthread', '-Wno-unused-function', str(cfile), '-o', str(exe)
     ], check=True)
     subprocess.run([str(exe)], check=True, timeout=10)
