@@ -130,7 +130,22 @@ int main(void) {
     combo_consume_response_locked(m,&gotgen,&gotid);
     CHECK(gotgen==0 && gotid==0);
 
-    puts("PASS Step 120 send gate: stock, valid, teardown, stale, callback mismatch, collision, exhausted, tombstone, error");
+    // EXPECTED UNSAFE BEHAVIOUR: the stock native serializer may abandon
+    // stream 111 before the send hook. A later stock-only message using the
+    // same pthread still passes callback_is_stock, but is NOT the old request.
+    // This is a negative diagnostic: passing here confirms the blocker.
+    reset_state(800);
+    build(me,800,9999); // orphaned stream-111 metadata, no matching send hook
+    void *unrelated_stock_msg=(void *)(uintptr_t)0x6780;
+    CHECK(combo_owner_has_build_locked(me));
+    CHECK(combo_prepare_send_locked(me,unrelated_stock_msg,1,&gen,&ticket)==1);
+    CHECK(gen==800 && ticket!=0);
+    CHECK(g_combo_request[0].in_use);
+    CHECK(g_combo_request[0].message==unrelated_stock_msg);
+    CHECK(g_combo_request[0].connid==9999);
+    puts("EXPECTED DEPLOYMENT BLOCKER: orphaned 111 metadata claims unrelated stock-only request");
+
+    puts("PASS Step 120 helper checks (NOT deployment-safe: orphan association reproduced)");
     return 0;
 }
 '''
