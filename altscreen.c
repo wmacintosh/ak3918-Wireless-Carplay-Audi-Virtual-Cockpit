@@ -226,6 +226,7 @@ struct combo_build {
     int in_use;
     int canceled;
     pthread_t owner;
+    void *message; /* [sp+0x2c] of native frame, identity only; never owned. */
     unsigned generation;
     uint64_t connid;
 };
@@ -336,6 +337,18 @@ static int combo_owner_has_build_locked(pthread_t owner) {
     return 0;
 }
 
+/* A fresh invocation of the native ensure hook invalidates older builds on
+ * this thread. This prevents a stale build from claiming an allocator-reused
+ * message address on a later stock request. Keep the tombstone so an older
+ * in-flight call cannot transmit its stream-111 message without tracking. */
+static void combo_cancel_owner_builds_locked(pthread_t owner) {
+    for (int i = 0; i < COMBINED_REQUEST_LIMIT; ++i) {
+        if (g_combo_build[i].in_use &&
+            pthread_equal(g_combo_build[i].owner, owner))
+            g_combo_build[i].canceled = 1;
+    }
+}
+
 /*  0: no injected stream (stock send unchanged)
  *  1: injected stream with callback successfully claimed
  * -1: stream 111 was injected but must NOT be sent (stale/untrackable)
@@ -349,6 +362,9 @@ static int combo_prepare_send_locked(pthread_t owner, void *msg,
     for (int i = 0; i < COMBINED_REQUEST_LIMIT; ++i) {
         struct combo_build *b = &g_combo_build[i];
         if (!b->in_use || !pthread_equal(b->owner, owner)) continue;
+        /* An orphan from an earlier native call is not the current message.
+         * Leave it reserved rather than corrupt stock-only response tracking. */
+        if (b->message != msg) continue;
         unsigned gen = b->generation;
         uint64_t connid = b->connid;
         int valid = !b->canceled && gen != 0 &&
@@ -613,11 +629,21 @@ static void cluster_maybe_start(unsigned generation, int force) {
  * This wrapper appends 111 to the *same* array prior to serialization.
  * Fail closed if no phone SETUP generation exists yet. */
 void shim_screen_ensure_stream(void **streams, void *stock_video) {
+    pthread_t self = pthread_self();
+    pthread_mutex_lock(&g_state_lock);
+    combo_cancel_owner_builds_locked(self); /* New native invocation. */
+    pthread_mutex_unlock(&g_state_lock);
+
     cf_arr_ensure(streams, stock_video);  /* Always preserve original behaviour. */
     if (!streams || !*streams || *GPAIRVERIFY_HK != 0) return;
 
+    /* Exact verified stock callsite: 0x2fad8 passes &sp[0x34], while the
+     * already-created HTTP message occupies sp[0x2c] (0x2f784/0x2fb88).
+     * 32-bit ARM stack layout, NOT a portable API. Never retain this pointer. */
+    void *native_msg = *(void **)((uintptr_t)streams - 8u);
+    if (!native_msg) return;
+
     unsigned gen = 0;
-    pthread_t self = pthread_self();
     int build_slot = -1;
     pthread_mutex_lock(&g_state_lock);
     if (g_session_valid && g_session && g_session_generation != 0 &&
@@ -712,6 +738,7 @@ void shim_screen_ensure_stream(void **streams, void *stock_video) {
         g_combo_build[build_slot].in_use = 1;
         g_combo_build[build_slot].canceled = 0;
         g_combo_build[build_slot].owner = self;
+        g_combo_build[build_slot].message = native_msg;
         g_combo_build[build_slot].generation = gen;
         g_combo_build[build_slot].connid = connid;
     } else {
@@ -741,10 +768,9 @@ int shim_screen_http_send(void *client, void *msg) {
             stock_cb = *(void **)((char *)msg + 0x904) ==
                        (void *)STOCK_SCREEN_RESPONSE_VA;
         }
-        /* FIXME: pthread identity alone is not a request identity. If a
-         * previous native serialization failed before its send hook, an
-         * orphaned build may be mistaken for this stock-only message.
-         * Combined mode is NOT safe to deploy until correlated by request. */
+        /* Require both native message-pointer and thread correlation. A fresh
+         * array-ensure invocation cancels older records before allocator reuse.
+         * This still cannot prove safety against teardown/send races. */
         decision = combo_prepare_send_locked(pthread_self(), msg, stock_cb,
                                              &gen, &ticket);
         if (decision == 1)
