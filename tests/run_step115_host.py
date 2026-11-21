@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 from pathlib import Path
-import subprocess, hashlib, tempfile
+import subprocess, hashlib, tempfile, os, sys
 root=Path(__file__).resolve().parents[1]
 src=(root/'altscreen.c').read_text()
 start=src.index('/* An installed callback can outlive the session.')
@@ -110,5 +110,11 @@ with tempfile.TemporaryDirectory(prefix="ak3918-step115-") as d:
         if sanitizer!='none':cmd+=['-fsanitize='+sanitizer]
         cmd+=[str(name),'-o',str(out/('step115_'+sanitizer.replace(',','_')))]
         subprocess.run(cmd,check=True)
-        subprocess.run([cmd[-1]],check=True,env={'ASAN_OPTIONS':'detect_leaks=1:halt_on_error=1','UBSAN_OPTIONS':'halt_on_error=1'})
+        env=os.environ.copy()
+        # Apple's ASan runtime rejects detect_leaks=1; Linux ASan supports it.
+        leak_detection='0' if sys.platform=='darwin' else '1'
+        env['ASAN_OPTIONS']='detect_leaks='+leak_detection+':halt_on_error=1'
+        env['UBSAN_OPTIONS']='halt_on_error=1'
+        print('RUN:',sanitizer,'(leak detection',leak_detection+')',flush=True)
+        subprocess.run([cmd[-1]],check=True,env=env)
 print('source sha256',hashlib.sha256(src.encode()).hexdigest())
