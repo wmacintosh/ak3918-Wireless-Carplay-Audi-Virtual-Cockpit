@@ -41,6 +41,8 @@ jobs:
       - name: Step 125 combined-firmware packaging veto
         run: |
           python3 tests/test_step125_package_gate.py
+      - name: Step 126 read-only transport ownership audit script
+        run: python3 tests/test_step126_shell.py
       - name: Report safety limitations
         if: always()
         run: |
