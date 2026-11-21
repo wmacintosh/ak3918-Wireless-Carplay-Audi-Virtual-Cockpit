@@ -13,11 +13,11 @@ The code under test is the existing OMKE-based AK3918 ARM port on `wip/ak3918-st
 ### Stock HTTP send: `0xa6974..0xa6a7c`
 
 - `0xa6a08..0xa6a3c`: initializes per-message send/buffer pointers, including `msg+0x8bc`, `+0x8c0`, `+0x8c4`, `+0x8c8`, `+0x8cc`, `+0x8d0`.
-- `0xa6a4c`: calls `0x82c74` with `r0=msg`; `0xa6a54`: calls the **same** function with `r0=client`. `0x82c74` is adjacent to the independently observed release helper `0x82c78`; it is a **candidate retain/reference increment**, not confirmed without its body.
+- `0xa6a4c`: calls `0x82c74` with `r0=msg`; `0xa6a54`: calls the **same** function with `r0=client`. Step 126 resolves `0x82c74 -> 0x85b50` and validates its ordinary (non-constant, typed CF object) path: at `0x85bd4..0x85bdc`, it calls `0xf0090` on object offset `+4` with increment `+1`. Its counterpart `0x82c78 -> 0x85c04` decrements via `0xf0090(...,-1)` at `0x85c88..0x85c90`; the zero-result path calls an object-specific finalizer and `free@plt` at `0x85cbc..0x85cd0`. **Reference increment/decrement behavior is confirmed for this path**, though dispatch ownership and session retention still require separate proof.
 - `0xa6a5c`: stores the client pointer into `msg+0x8ec`.
 - `0xa6a68..0xa6a6c`: takes `*(client+8)` as queue-object input `r0`, passes the message as `r1`, passes a static function/data pointer as `r2`, and calls `0xa1900`. The stock send returns through `0xa6a74..0xa6a7c`.
 
-**Implication:** The native send has an explicit reference-management and queue handoff boundary. The message/client are likely pinned across enqueue, but this remains a hypothesis until `0x82c74` and the queue consumer/release path are audited. Even confirmed message/client retention would **not**, by itself, prove receiver-session lifetime safety.
+**Implication:** The native send has an explicit reference-management and queue handoff boundary. The send call **increments** references for message and HTTP client before enqueue under the standard CF-object path; the remaining question is whether the queued references are balanced by the queue drain, and whether the *receiver session* has independent lifetime protection. Even confirmed message/client retention would **not**, by itself, prove receiver-session lifetime safety.
 
 ### Native transport queue: `0xa1900..0xa1b20`
 
@@ -30,6 +30,14 @@ The code under test is the existing OMKE-based AK3918 ARM port on `wip/ak3918-st
 - `0xa1b14..0xa1b20`: exits by calling `pthread_mutex_unlock` on the same mutex.
 
 **Implication:** Blindly holding the shim's `g_state_lock` throughout `http_send` would create a possible lock-order/reentrancy hazard. The indirect callback takes `r0=0`, so it is **not demonstrated to be** the direct `shim_screen_response(msg)` callback; it may merely wake the queue. Its target and the queue consumer are unknown.
+
+### Adjacent socket initializer is not a queue drain
+
+The Step 126 excerpt `0xa1b74..0xa1e00` starts an adjacent routine that creates a socket (`socket@plt` at `0xa1bec`), binds it (`0xa1c6c`), obtains local socket info and connects (`0xa1d84`). It can enqueue work through `0xa1900` at `0xa1df4`. **This is a queue producer/initializer, not evidence of a queue consumer or reference release.** The real drain still needs discovery.
+
+### Response synchronization primitive: `0xa1338..0xa13a8`
+
+The stock callback's `0xa1338` helper locks `object+0x2c`, increments the counter at `object+0x64`, signals the condition variable pointer in `object+0x60`, and unlocks. This is a completion-notification path; it is not evidence that the receiver session is retained. It strengthens the need to avoid introducing lock-order inversions in our shim.
 
 ### Native stock response: `0x2ec7c..0x2ee8c`
 
@@ -60,9 +68,13 @@ It captures the `0x82c74 / 0x82c78` wrappers, underlying retain/release implemen
 
 Expected follow-up decisions:
 
-1. Confirm whether the paired calls to `0x82c74` increment both object reference counts.
-2. Locate the queue drain and balanced releases and identify the under-mutex indirect callback target.
+1. Confirm exact CF object classes of both native send arguments and locate balanced release of their newly retained references after queue completion.
+2. Locate the **actual queue drain** (not adjacent socket initialization at `0xa1b74`), its release/error paths, and the global indirect callback invoked under queue mutex at `0xa1a3c`.
 3. Determine whether the receiver session (not merely the HTTP client/message) can be destroyed while send or response is outstanding.
 4. Only then determine whether teardown/send ordering needs a shim barrier or is safely handled by stock object ownership.
 
 **Deployment remains blocked.** `AK_ENABLE_COMBINED_CLUSTER=0` by default; no flashable combined image should be produced.
+
+## Step 126 uploaded disassembly review (2026-11-21)
+
+The user's verified stock report supplied the exact `0x82c74/0x82c78` forwarding wrappers and the underlying CF retain/release code, as well as fuller finalizer instructions. At `0x66a94` the session finalizer calls a session-owned function pointer from `session+0x20` before significant cleanup; it then destroys a session mutex (`0x66b34`), releases `session+0x0c` via the CF release wrapper (`0x66ba8`), and tears down other synchronization objects (`0x66bbc`, `0x66bd4`). **No demonstrated guard prevents session finalization while a separate HTTP enqueue is active.** This continues to be a source-only logical race, not a demonstrated runtime use-after-free. See `scripts/step127_extract_queue_completion.sh` for targeted investigation of the native queue callback at `0xa6040`.
