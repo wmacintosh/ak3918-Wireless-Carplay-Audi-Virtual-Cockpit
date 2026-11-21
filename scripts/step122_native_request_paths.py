@@ -87,6 +87,7 @@ def trace(insns, hook=DEFAULT_HOOK, send=DEFAULT_SEND,
     todo = deque([(hook, (hook,))])
     visited = set()
     exits = []
+    edges = {}  # Valid intraprocedural paths, including edges to the send site.
     send_path = None
     while todo:
         addr, path = todo.popleft()
@@ -110,9 +111,35 @@ def trace(insns, hook=DEFAULT_HOOK, send=DEFAULT_SEND,
                 exits.append((addr, f'{reason} outside native range to {dest:#x}', path))
             elif dest not in insns:
                 exits.append((addr, f'{reason} to missing {dest:#x}', path))
-            elif dest not in visited:
-                todo.append((dest, path + (dest,)))
-    return {'reachable': len(visited), 'send_path': send_path, 'exits': exits}
+            else:
+                edges.setdefault(addr, []).append((dest, reason))
+                if dest not in visited:
+                    todo.append((dest, path + (dest,)))
+
+    # Distinct failure branches can all reach one shared native return. The
+    # prior exit-only report collapsed them into a single terminal path.
+    # Reverse reachability identifies every decision with one arm leading to
+    # send and another arm that cannot reach send in this limited CFG model.
+    reverse = {}
+    for source, destinations in edges.items():
+        for dest, _ in destinations:
+            reverse.setdefault(dest, set()).add(source)
+    can_reach_send = {send}
+    queue = deque([send])
+    while queue:
+        for source in reverse.get(queue.popleft(), ()):
+            if source not in can_reach_send:
+                can_reach_send.add(source)
+                queue.append(source)
+    bypass_decisions = []
+    for source in sorted(visited):
+        if source not in can_reach_send or kind(insns[source]) != 'conditional-jump':
+            continue
+        for dest, reason in edges.get(source, ()):  # One arm bypasses send.
+            if dest not in can_reach_send:
+                bypass_decisions.append((source, dest, reason))
+    return {'reachable': len(visited), 'send_path': send_path,
+            'exits': exits, 'bypass_decisions': bypass_decisions}
 
 
 def compact_path(path, max_count=24):
@@ -147,11 +174,21 @@ def report(raw, hook=DEFAULT_HOOK, send=DEFAULT_SEND,
     ]
     if output['send_path']:
         lines.extend(['', f'Sample route: {compact_path(output["send_path"])}'])
-    lines.extend(['', '## Candidate paths leaving without visiting send', ''])
+    lines.extend(['', '## Send-bypassing branch decisions', ''])
+    if output['bypass_decisions']:
+        lines.append(f'Independent branch arms leading away from send: {len(output["bypass_decisions"])}.')
+        for source, dest, reason in output['bypass_decisions']:
+            insn = sub[source]
+            lines.append(f'- {source:#x}: {insn.mnemonic} {insn.operands}; '
+                         f'{reason} to {dest:#x} cannot reach {send:#x} in this model')
+    else:
+        lines.append('No bypassing conditional arm found by this limited model.')
+    lines.extend(['', '## Candidate terminal paths leaving without visiting send', ''])
     if not output['exits']:
         lines.append('No such path found by this limited model (NOT proof of safety).')
     else:
-        lines.append(f'Terminals: {len(output["exits"])}. Up to 24 distinct examples:')
+        lines.append(f'Unique exit locations found: {len(output["exits"])}. '
+                     'Multiple failure branches may share a terminal. Up to 24 examples:')
         seen = set()
         for address, reason, path in output['exits']:
             key = (address, reason)
