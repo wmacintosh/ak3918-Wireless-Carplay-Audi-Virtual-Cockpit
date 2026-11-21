@@ -50,7 +50,7 @@ STOCK=/repo/stock_analysis/sdDongle
 test -x "$OBJDUMP"
 test -r "$STOCK"
 dump() {
-    printf "\\n===== %s =====\\n" "$1"
+    printf "\n===== %s =====\n" "$1"
     "$OBJDUMP" -d --start-address="$2" --stop-address="$3" "$STOCK"
 }
 # Preserve all instructions through the native function's common cleanup.
