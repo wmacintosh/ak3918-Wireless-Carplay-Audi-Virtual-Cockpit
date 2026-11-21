@@ -21,23 +21,28 @@ The current shim stores a `combo_build` by `pthread_self()` and generation, **no
 
 An injected request A may fail while serializing **before** it reaches the send hook. Its `combo_build` remains in use. A later stock-only request B on the **same thread** can then enter the send hook with the stock callback address. Since `combo_prepare_send_locked` only tests thread, generation and callback compatibility, it can claim request B using A's obsolete connection ID and install the response wrapper on B.
 
-The added negative diagnostic in `tests/run_step120_host.py` constructs precisely this sequence using the **actual extracted C helpers**. It asserts that the current implementation makes the unsafe association, so a passing test **confirms the blocker**, not a safety guarantee. The modified test has not yet been executed in a compiler in this GitHub-only update.
+The added negative diagnostic in `tests/run_step120_host.py` constructs precisely this sequence using the **actual extracted C helpers**. It asserts that the current implementation makes the unsafe association, so a passing test **confirms the blocker**, not a safety guarantee. The diagnostic subsequently passed in GitHub Actions on 2026-11-21; this is a **reproduction of a source-level defect**, not device runtime validation.
 
 This is independent of the teardown/send TOCTOU race: session finalization can still occur after the hook releases `g_state_lock` but before/during the native transport call.
 
 ## Read-only next step
 
-On the Mac containing the verified stock ELF and Docker ARM toolchain:
+On the Mac containing the verified stock ELF and Docker ARM toolchain, run from **your GitHub repository clone** (not necessarily from the stock diagnostics folder):
 
 ```bash
-cd ~/AK3918/01_Development/AK3918_Diagnostics/ak3918-sigsegv-fix
 git fetch origin
 git switch wip/ak3918-step115-callback-tombstones
-bash scripts/step121_extract_native_request.sh
+AK3918_ROOT="$HOME/AK3918_Diagnostics" bash scripts/step121_extract_native_request.sh
 python3 tests/run_step120_host.py
+python3 tests/test_step122_paths.py
 ```
 
-The script produces `~/Desktop/AK3918_step121_native_request_lifecycle.txt` without modifying or installing firmware.
+Set `AK3918_ROOT` to whichever folder actually contains `stock_analysis/sdDongle`. The extraction script verifies the stock binary SHA-256 before launching the Docker disassembler. Its new full native-function range `0x2f6b8..0x30310` fills the two gaps in the original Step 121 extraction. The script now generates two local files automatically:
+
+- `~/Desktop/AK3918_step121_native_request_lifecycle.txt` — raw read-only ARM disassembly.
+- `~/Desktop/AK3918_step121_native_request_lifecycle_paths.md` — Step 122 *candidate* branch/exit inventory, produced by `scripts/step122_native_request_paths.py`.
+
+Neither script modifies, packages, or installs firmware. A static candidate exit cannot prove a bug occurs at runtime, and even an apparently complete path map cannot establish request ownership, concurrency or safety.
 
 Inspect this disassembly to determine:
 
