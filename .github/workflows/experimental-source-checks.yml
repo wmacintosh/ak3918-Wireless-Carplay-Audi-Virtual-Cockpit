@@ -38,6 +38,9 @@ jobs:
         run: |
           bash -n scripts/step125_extract_native_transport.sh
           python3 tests/run_step125_teardown_race.py
+      - name: Step 125 combined-firmware packaging veto
+        run: |
+          python3 tests/test_step125_package_gate.py
       - name: Report safety limitations
         if: always()
         run: |
