@@ -1,4 +1,4 @@
-# Step 127 — Native HTTP queue completion target
+# Step 127 — Native HTTP queued dispatch target
 
 **Status: read-only static analysis; no combined-mode flashing or packaging permitted.**
 
@@ -21,7 +21,7 @@ At the stock send entry:
 - `0xa6a60`: `add r2, pc, r2`. ARM state PC reads as the instruction address plus 8 (`0xa6a68`), so `r2 = 0xa6a68 - 0xa28 = 0xa6040`.
 - `0xa6a6c`: `bl 0xa1900` with `r1=message` and `r2=0xa6040`.
 
-`0xa6040` is the **exact queued callback pointer value** for this verified stock binary. Its implementation and whether it releases both queue-retained objects remain unverified until disassembled. The callback pointer `0xa6040` is distinct from the indirect global notifier invoked at `0xa1a3c` under the queue mutex.
+`0xa6040` is the **exact queued dispatch callback pointer value** for this verified stock binary. Step 127 disassembly now confirms it links the message into the client's pending list, calls `0xa53fc(client)` to start processing, and releases **the client** through `0x82c78`. It does **not** establish release of the separately retained message or final network completion. The callback pointer `0xa6040` is distinct from the indirect global notifier invoked at `0xa1a3c` under the queue mutex. See [Step 128](STEP128_HTTP_PROCESSOR_AND_RELEASE_AUDIT.md) for the evidence and next trace.
 
 ## Step 127 read-only extraction
 
@@ -49,3 +49,7 @@ These are audit **ranges**, not confirmed boundaries of routines. No firmware ar
 Step 125's deterministic host test demonstrates that a combined send can pass the shim's generation check and start native send after another thread invalidates the session. The stock client's/message's reference management may prevent a particular use-after-free, but cannot establish the protocol or session teardown is safe.
 
 **Do not hold the shim lock through stock send, wait indefinitely in finalizer, or assume a message callback pins receiver-session state until the queue-drain/response path is verified.** `AK_ENABLE_COMBINED_CLUSTER` remains 0 by default; the unverified combined build/package veto stays in force.
+
+## Review result (2026-11-21)
+
+Step 127 has been completed using the user's attached read-only disassembly. The callback at `0xa6040` is **not** the terminal HTTP response callback; it appends the message and dispatches client processing via `0xa53fc`, then releases the client's send-retained CF reference. Step 128 tracks the still-unverified message release and teardown behavior. The existing combined-mode package veto remains in place.
