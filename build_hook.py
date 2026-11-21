@@ -320,8 +320,8 @@ def patch_sddongle(src, dst):
     open(dst, "wb").write(d)
     print("sdDongle md5", hashlib.md5(d).hexdigest())
 
-def make_tar(outdir):
-    tar = os.path.join(ROOT, "ak_hook.tar")
+def make_tar(outdir, tar_name="ak_hook.tar"):
+    tar = os.path.join(ROOT, tar_name)
     order = LIBS + ["sdDongle", SHIM_SO]
     with tarfile.open(tar, "w", format=tarfile.GNU_FORMAT) as t:
         for f in order:
@@ -349,9 +349,11 @@ def main():
     patch_sddongle(os.path.join(SRC, "sdDongle"), os.path.join(DST, "sdDongle"))
     from repair_elf import repair
     print("relocated dynamic string table", repair(os.path.join(DST, "sdDongle")))
-    # This integration is a source-level experiment; an output executable does
-    # not establish runtime safety. Do not emit a flashable tar by default.
-    if os.environ.get("AK_STEP100_ALLOW_UNVERIFIED_PACKAGE") == "1":
+    # Do not emit a flashable tar by default.
+    if ENABLE_COMBINED_CLUSTER and os.environ.get("AK_STEP128_ALLOW_TEST_PACKAGE") == "1":
+        print("Step 128: packaging experimental combined test tar (keep stock recovery ready)")
+        make_tar(DST, tar_name="ak_hook_step128_test.tar")
+    elif os.environ.get("AK_STEP100_ALLOW_UNVERIFIED_PACKAGE") == "1":
         print("WARNING: explicitly packaging an UNVERIFIED Step 100 build")
         make_tar(DST)
     else:

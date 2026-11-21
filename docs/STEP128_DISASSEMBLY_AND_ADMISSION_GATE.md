@@ -68,6 +68,15 @@ Because `0xa6974` is non-blocking enqueue-only and never acquires `g_state_lock`
 - `shim_session_teardown` and generation transitions in `shim_session_setup` invalidate `g_session_valid` / cancel builds & requests first, then wait on `g_session_cv` until `g_combo_send_inflight == 0` (`combo_wait_sends_drained_locked`).
 - `tests/run_step128_admission_gate.py` extracts the Step 115/120/128 helpers directly from `altscreen.c` and verifies serialization, post-teardown rejection, non-deadlocking concurrent response callbacks, and failed-send cleanup under ASan/UBSan, UBSan, and unsanitized builds.
 
-## Remaining deployment boundary
+## 5. ARM926EJ-S / uClibc cross-compile & ELF verification
 
-`AK_ENABLE_COMBINED_CLUSTER` remains `0` by default and the `build_hook.py` combined-packaging veto remains in place until ARM/uClibc cross-compilation, ELF verification, and controlled on-device testing with stock recovery are completed.
+Compiled and validated inside `ak3918-buildroot:latest` (`arm-buildroot-linux-uclibcgnueabi-gcc`, `-mcpu=arm926ej-s -mfloat-abi=soft`):
+
+- `AK_ENABLE_COMBINED_CLUSTER=0`: `PASS: ELF32 ARM, soft float, uClibc dependency, constructor, exported hook`; `libSdH.so` links `libc.so.0`; `sdDongle` MD5 `4aafec684a5f46ccd16704f0a0a317a7`.
+- `AK_ENABLE_COMBINED_CLUSTER=1`: `PASS: ELF32 ARM, soft float, uClibc dependency, constructor, exported hook`; `libSdH.so` links `libc.so.0`; hooks at `0x2fadc -> 0x102ea0` (`0x13c644`) and `0x2fbb0 -> 0x102eac` (`0x13c648`); `sdDongle` MD5 `bf66fb161209ad484324a015e308847b`.
+
+## Controlled on-dongle test gate
+
+- `AK_ENABLE_COMBINED_CLUSTER` remains `0` by default and the legacy `AK_STEP100_ALLOW_UNVERIFIED_PACKAGE=1` veto remains active.
+- An explicit test-only archive `ak_hook_step128_test.tar` can be built with `AK_ENABLE_COMBINED_CLUSTER=1 AK_STEP128_ALLOW_TEST_PACKAGE=1` without modifying `stock_ak_202610081659.tar` or the default `ak_hook.tar`.
+- Keep verified `stock_ak_202610081659.tar` ready for immediate recovery.
