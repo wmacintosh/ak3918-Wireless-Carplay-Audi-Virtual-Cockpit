@@ -40,6 +40,34 @@ class TestStep122(unittest.TestCase):
             for addr, reason, _ in outcome['exits']
         ))
         self.assertIn('NO FLASH', mod.report(sample))
+        self.assertEqual([(a, b) for a,b,_ in outcome['bypass_decisions']],
+                         [(0x2fae0, 0x2faf0)])
+
+    def test_two_failure_branches_join_one_cleanup(self):
+        # Two distinct failure decisions share one return; the old summary
+        # reported only one exit and hid the two independent bypasses.
+        sample = '''
+2fadc: eb019b14 bl 9327c <array_ensure>
+2fae0: 1a000002 bne 2faf0 <continue>
+2fae4: ea000003 b 2faf8 <cleanup>
+2fae8: e1a00000 nop
+2faec: e1a00000 nop
+2faf0: 1a000002 bne 2fb00 <send>
+2faf4: ea000000 b 2faf8 <cleanup>
+2faf8: eaffffff b 2fb08 <return>
+2fafc: e1a00000 nop
+2fb00: ea00002b b 2fbb0 <send>
+2fb04: e1a00000 nop
+2fb08: e12fff1e bx lr
+2fbb0: eb017baa bl a6974 <http_send>
+'''
+        outcome = mod.trace(mod.parse_objdump(sample))
+        self.assertIsNotNone(outcome['send_path'])
+        self.assertEqual([src for src,_,_ in outcome['bypass_decisions']],
+                         [0x2fae0, 0x2faf0])
+        self.assertEqual(len(outcome['exits']), 1)
+        rendered = mod.report(sample)
+        self.assertIn('Independent branch arms leading away from send: 2', rendered)
 
     def test_incomplete_dump_does_not_hide_missing_instructions(self):
         sample = '''
