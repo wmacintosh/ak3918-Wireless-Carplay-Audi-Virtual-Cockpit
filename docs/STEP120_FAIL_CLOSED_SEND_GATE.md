@@ -28,11 +28,11 @@ This gate acts only on outgoing messages whose stream-111 build metadata reaches
 
 ## Unresolved blockers
 
-**Time-of-check/time-of-use (TOCTOU) send race.** Teardown can still invalidate a session **after** `combo_prepare_send_locked` releases `g_state_lock` but before/during the native HTTP send. This patch does not provide a strict atomic teardown-to-transport guarantee. Resolving that requires proven native HTTP send/reentrancy and finalizer ordering; holding `g_state_lock` across native code is not considered safe without such evidence.
+**Time-of-check/time-of-use (TOCTOU) send race (deployment blocker).** Teardown can still invalidate a session **after** `combo_prepare_send_locked` releases `g_state_lock` but before/during the native HTTP send. This patch does not provide a strict atomic teardown-to-transport guarantee. Resolving that requires proven native HTTP send/reentrancy and finalizer ordering; holding `g_state_lock` across native code is not considered safe without such evidence.
 
 **Thread and request correlation.** `pthread_self()` matches the original array-construction and send hooks within the same native function under ordinary synchronous execution. If that function can reenter or perform different outbound sends on the same thread between hooks, records may be mismatched. Verify native control flow and test on target in a recoverable environment before relying on it.
 
-**Lost build state.** If the stock function returns early after the stream-111 insertion but before reaching the HTTP send hook, its canceled build may never be consumed. The associated thread is barred from later stream-111 instrumentation rather than risk overwriting its unresolved metadata. This may degrade functionality but cannot affect the separate normal stock stream 110 hook directly.
+**Orphaned build / stock-110 misassociation (deployment blocker).** The stock serialization helper at `0x2fafc` has failure branches that can bypass the send hook. If the prior stream-111 build record remains and another request is built on the *same thread*, the next call to the send hook may consume the orphaned record and incorrectly associate it with a **stock-110-only** message. Depending on generation state, this can reject the legitimate stock request or install an unnecessary response wrapper. The current test suite checks isolated send-gate helpers; it does **not** prove whole-function request identity. This must be fixed by a verified request/frame identity or a cleanup hook before experimental combined mode is eligible for deployment.
 
 **Failed sends and late callbacks.** Step 115 retains tombstones to avoid reusing callback identities. Eight orphaned requests can exhaust the tracking table. Callback pointer identities also depend on the stock HTTP object's lifecycle.
 
@@ -42,4 +42,4 @@ This gate acts only on outgoing messages whose stream-111 build metadata reaches
 
 Maintain `AK_ENABLE_COMBINED_CLUSTER=0` for any ordinary recovery or stock builds. This remains an experimental source-only branch. No firmware packaging or flashing.
 
-Next: rerun the ARM syntax/ELF checks for Step 120, then investigate HTTP send/finalizer concurrency so the remaining TOCTOU window can be addressed with evidence.
+Next: rerun ARM syntax checks for Step 120, then investigate native serialization failure cleanup and request/frame identity **before** treating this send gate as safe. Independently investigate HTTP send/finalizer concurrency for the TOCTOU window.
