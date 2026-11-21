@@ -385,6 +385,36 @@ static int combo_prepare_send_locked(pthread_t owner, void *msg,
 }
 /* END STEP120 SEND GATE */
 
+/* BEGIN STEP128 SEND ADMISSION GATE — all helpers require g_state_lock.
+ * Stock HTTPClientSendMessage (0xa6974) is verified non-blocking enqueue-only
+ * (CFRetain x2 + dispatch_async_f at 0xa1900; never invokes 0xa6040 or
+ * msg+0x904 synchronously). Tracking in-flight admitted sends lets teardown and
+ * session switches drain active enqueue calls without holding g_state_lock
+ * across stock transport or deadlocking against shim_screen_response. */
+static int g_combo_send_inflight = 0;
+
+static void combo_send_enter_locked(void) {
+    g_combo_send_inflight++;
+}
+
+static void combo_send_leave_locked(int rc, unsigned gen, uint64_t ticket) {
+    if (rc != 0) {
+        combo_cancel_ticket_locked(ticket);
+        if (g_combo_inflight_generation == gen)
+            g_combo_inflight_generation = 0;
+    }
+    if (--g_combo_send_inflight == 0) {
+        pthread_cond_broadcast(&g_session_cv);
+    }
+}
+
+static void combo_wait_sends_drained_locked(void) {
+    while (g_combo_send_inflight > 0) {
+        pthread_cond_wait(&g_session_cv, &g_state_lock);
+    }
+}
+/* END STEP128 SEND ADMISSION GATE */
+
 static void shim_screen_response(void *msg);
 #endif
 
@@ -538,7 +568,11 @@ void shim_session_teardown(void *session) {
             g_cluster_ctx_generation = 0;
         }
 
-        while (g_session_cmd_inflight > 0) {
+        while (g_session_cmd_inflight > 0
+#if AK_ENABLE_COMBINED_CLUSTER
+               || g_combo_send_inflight > 0
+#endif
+        ) {
             pthread_cond_wait(&g_session_cv, &g_state_lock);
         }
     }
@@ -773,25 +807,25 @@ int shim_screen_http_send(void *client, void *msg) {
          * This still cannot prove safety against teardown/send races. */
         decision = combo_prepare_send_locked(pthread_self(), msg, stock_cb,
                                              &gen, &ticket);
-        if (decision == 1)
+        if (decision == 1) {
             *(void **)((char *)msg + 0x904) = (void *)&shim_screen_response;
+            combo_send_enter_locked();
+        }
         pthread_mutex_unlock(&g_state_lock);
     }
 
     if (decision < 0) {
         /* No HTTP submission of a known stream-111 message if its session
          * expired or response tracking is unavailable. The stock caller's
-         * nonzero-error path releases its message and continues cleanup.
-         * This does not stop a send already admitted before teardown. */
+         * nonzero-error path releases its message and continues cleanup. */
         dbg("combined stale 111 send rejected", (int)gen);
         return -1;
     }
 
-    int rc = http_send(client, msg); /* No shim mutex held across stock code. */
-    if (decision == 1 && rc != 0) {
+    int rc = http_send(client, msg); /* Non-blocking enqueue; no shim lock held. */
+    if (decision == 1) {
         pthread_mutex_lock(&g_state_lock);
-        combo_cancel_ticket_locked(ticket);
-        if (g_combo_inflight_generation == gen) g_combo_inflight_generation = 0;
+        combo_send_leave_locked(rc, gen, ticket);
         pthread_mutex_unlock(&g_state_lock);
     }
     return rc;
@@ -1352,6 +1386,7 @@ int shim_session_setup(void *session, void *req, void **resp_out) {
         combo_cancel_all_builds_locked();
         /* Keep canceled tombstones until the wrapper callback arrives. */
         combo_cancel_all_requests_locked();
+        combo_wait_sends_drained_locked();
 #endif
         session_changed = 1;
     }
@@ -1401,6 +1436,7 @@ int shim_session_setup(void *session, void *req, void **resp_out) {
         combo_cancel_all_builds_locked();
         /* Keep canceled tombstones until the wrapper callback arrives. */
         combo_cancel_all_requests_locked();
+        combo_wait_sends_drained_locked();
 #endif
         need_retire = 1;
     }
