@@ -45,6 +45,8 @@ jobs:
         run: python3 tests/test_step126_shell.py
       - name: Step 127 queued completion callback audit script
         run: python3 tests/test_step127_shell.py
+      - name: Step 128 HTTP message processor read-only audit script
+        run: python3 tests/test_step128_shell.py
       - name: Report safety limitations
         if: always()
         run: |
