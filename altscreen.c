@@ -741,6 +741,10 @@ int shim_screen_http_send(void *client, void *msg) {
             stock_cb = *(void **)((char *)msg + 0x904) ==
                        (void *)STOCK_SCREEN_RESPONSE_VA;
         }
+        /* FIXME: pthread identity alone is not a request identity. If a
+         * previous native serialization failed before its send hook, an
+         * orphaned build may be mistaken for this stock-only message.
+         * Combined mode is NOT safe to deploy until correlated by request. */
         decision = combo_prepare_send_locked(pthread_self(), msg, stock_cb,
                                              &gen, &ticket);
         if (decision == 1)
