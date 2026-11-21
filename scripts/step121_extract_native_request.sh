@@ -32,29 +32,41 @@ fi
 command -v docker >/dev/null 2>&1 || { echo "FAIL: Docker unavailable" >&2; exit 1; }
 mkdir -p "$(dirname "$REPORT")"
 
+# Preserve an earlier valid report if the container fails or exits early.
+TEMP_REPORT="$(mktemp "$REPORT.tmp.XXXXXX")"
+trap 'rm -f "$TEMP_REPORT"' EXIT
+
 echo "PASS: Verified stock ELF; extracting read-only control flow"
-docker run --rm --platform linux/arm64 \
+# Literal heredoc prevents apostrophes in comments from ending the container
+# script early. Both firmware and toolchain mounts are read-only.
+docker run --rm --platform linux/arm64 -i \
   -v "$ROOT:/repo:ro" \
   -v ak3918-buildroot-work:/workspace/buildroot-work/buildroot:ro \
   --entrypoint /bin/bash \
-  ak3918-buildroot:latest -c '
+  ak3918-buildroot:latest -s > "$TEMP_REPORT" <<'AK3918_READONLY'
 set -euo pipefail
 OBJDUMP=/workspace/buildroot-work/buildroot/output/host/bin/arm-buildroot-linux-uclibcgnueabi-objdump
 STOCK=/repo/stock_analysis/sdDongle
 test -x "$OBJDUMP"
 test -r "$STOCK"
 dump() {
-    printf "\n===== %s =====\n" "$1"
+    printf "\\n===== %s =====\\n" "$1"
     "$OBJDUMP" -d --start-address="$2" --stop-address="$3" "$STOCK"
 }
-# Preserve every instruction through the function's common cleanup.
-# The previous disjoint windows omitted 0x2f850..0x2fa90 and
-# 0x2fbc0..0x2fbe8, making a complete control-flow audit impossible.
+# Preserve all instructions through the native function's common cleanup.
 dump "COMPLETE NATIVE OUTGOING REQUEST AND CLEANUP" 0x2f6b8 0x30310
 dump "PLIST SERIALIZATION FUNCTION" 0x8d0a0 0x8d3c0
 dump "HTTP MESSAGE CONSTRUCTION" 0xa6d08 0xa6f40
 dump "HTTP SEND FUNCTION" 0xa6974 0xa6d08
-' > "$REPORT"
+AK3918_READONLY
+
+if [[ ! -s "$TEMP_REPORT" ]] ||
+   ! grep -Eq '^[[:space:]]*0*2fadc:' "$TEMP_REPORT" ||
+   ! grep -Eq '^[[:space:]]*0*2fbb0:' "$TEMP_REPORT"; then
+    echo "FAIL: Incomplete disassembly: missing 0x2fadc or 0x2fbb0 instruction." >&2
+    exit 1
+fi
+mv "$TEMP_REPORT" "$REPORT"
 
 echo "PASS: Step 121 report created at $REPORT"
 ls -lh "$REPORT"
