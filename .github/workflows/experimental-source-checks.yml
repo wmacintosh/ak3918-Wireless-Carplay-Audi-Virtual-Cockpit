@@ -1,0 +1,34 @@
+name: Experimental source-only host checks
+
+# No firmware image is built, modified, packaged, released, or flashed here.
+# A green run does NOT establish ARM ABI or runtime safety.
+on:
+  push:
+    branches:
+      - wip/ak3918-step115-callback-tombstones
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  host-safety:
+    name: C syntax and helper diagnostics (not device-validated)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Host syntax — default stock path and experimental combined path
+        run: |
+          cc -std=gnu11 -Wall -Wextra -Werror -fsyntax-only -DAK_ENABLE_COMBINED_CLUSTER=0 altscreen.c
+          cc -std=gnu11 -Wall -Wextra -Werror -fsyntax-only -DAK_ENABLE_COMBINED_CLUSTER=1 altscreen.c
+      - name: Step 115 request tracking helper checks
+        run: python3 tests/run_step115_host.py
+      - name: Step 120 send gate and expected orphan-association diagnostic
+        run: python3 tests/run_step120_host.py
+      - name: Report safety limitations
+        if: always()
+        run: |
+          echo "Source-only host tests. No target ARM ABI, device runtime, or teardown/send race verification."
+          echo "The Step 120 diagnostic currently reproduces an unsafe orphaned request association."
+          echo "AK_ENABLE_COMBINED_CLUSTER must remain disabled for normal stock/recovery use."
