@@ -224,6 +224,7 @@ static void *cluster_setup_to_car(void *arg);
 /* All these tables are protected by g_state_lock. Never retain stock messages. */
 struct combo_build {
     int in_use;
+    int canceled;
     pthread_t owner;
     unsigned generation;
     uint64_t connid;
@@ -316,6 +317,57 @@ static void combo_consume_response_locked(void *msg,
     }
 }
 /* END STEP115 REQUEST HELPERS */
+
+/* BEGIN STEP120 SEND GATE — all helpers require g_state_lock.
+ * A published stream-111 array must not be sent without a valid response hook.
+ * Teardown cancels build entries but leaves them until their native send hook.
+ * Early native failure may strand a slot; deliberate fail-closed behaviour. */
+static void combo_cancel_all_builds_locked(void) {
+    for (int i = 0; i < COMBINED_REQUEST_LIMIT; ++i) {
+        if (g_combo_build[i].in_use) g_combo_build[i].canceled = 1;
+    }
+}
+
+static int combo_owner_has_build_locked(pthread_t owner) {
+    for (int i = 0; i < COMBINED_REQUEST_LIMIT; ++i) {
+        if (g_combo_build[i].in_use &&
+            pthread_equal(g_combo_build[i].owner, owner)) return 1;
+    }
+    return 0;
+}
+
+/*  0: no injected stream (stock send unchanged)
+ *  1: injected stream with callback successfully claimed
+ * -1: stream 111 was injected but must NOT be sent (stale/untrackable)
+ * Caller installs shim_screen_response on status 1, and returns -1 to
+ * native code without calling http_send on status -1. */
+static int combo_prepare_send_locked(pthread_t owner, void *msg,
+                                     int callback_is_stock,
+                                     unsigned *gen_out, uint64_t *ticket_out) {
+    *gen_out = 0;
+    *ticket_out = 0;
+    for (int i = 0; i < COMBINED_REQUEST_LIMIT; ++i) {
+        struct combo_build *b = &g_combo_build[i];
+        if (!b->in_use || !pthread_equal(b->owner, owner)) continue;
+        unsigned gen = b->generation;
+        uint64_t connid = b->connid;
+        int valid = !b->canceled && gen != 0 &&
+                    gen == g_session_generation && g_session_valid &&
+                    g_session != NULL && g_alt_seen_generation == gen &&
+                    g_combo_inflight_generation == gen;
+        memset(b, 0, sizeof *b); /* Native request reached its send hook. */
+        if (!valid || !callback_is_stock ||
+            !combo_claim_request_locked(msg, gen, connid, ticket_out)) {
+            if (g_combo_inflight_generation == gen)
+                g_combo_inflight_generation = 0;
+            return -1;
+        }
+        *gen_out = gen;
+        return 1;
+    }
+    return 0;
+}
+/* END STEP120 SEND GATE */
 
 static void shim_screen_response(void *msg);
 #endif
@@ -455,7 +507,7 @@ void shim_session_teardown(void *session) {
         g_session_generation++;
 #if AK_ENABLE_COMBINED_CLUSTER
         g_combo_inflight_generation = 0;
-        memset(g_combo_build, 0, sizeof g_combo_build);
+        combo_cancel_all_builds_locked();
         /* Keep canceled tombstones until the wrapper callback arrives. */
         combo_cancel_all_requests_locked();
         /* A late callback still runs stock, but is forbidden to start transport. */
@@ -574,14 +626,12 @@ void shim_screen_ensure_stream(void **streams, void *stock_video) {
         g_cluster_connecting_gen != g_session_generation &&
         !(g_cluster_ctx && !g_cluster_ctx->retired &&
           g_cluster_ctx_generation == g_session_generation)) {
-        for (int i = 0; i < COMBINED_REQUEST_LIMIT; ++i) {
-            if (g_combo_build[i].in_use &&
-                pthread_equal(g_combo_build[i].owner, self)) {
-                g_combo_build[i].in_use = 0;
+        /* Never overwrite an unfinished or canceled build from this thread.
+         * It may still own an already-serialized stream-111 request. */
+        if (!combo_owner_has_build_locked(self)) {
+            for (int i = 0; i < COMBINED_REQUEST_LIMIT; ++i) {
+                if (!g_combo_build[i].in_use) { build_slot = i; break; }
             }
-        }
-        for (int i = 0; i < COMBINED_REQUEST_LIMIT; ++i) {
-            if (!g_combo_build[i].in_use) { build_slot = i; break; }
         }
         int have_req_slot = 0;
         for (int i = 0; i < COMBINED_REQUEST_LIMIT; ++i) {
@@ -660,6 +710,7 @@ void shim_screen_ensure_stream(void **streams, void *stock_video) {
         *streams = replacement;
         replacement = NULL;  /* Native SETUP now owns this CFArray reference. */
         g_combo_build[build_slot].in_use = 1;
+        g_combo_build[build_slot].canceled = 0;
         g_combo_build[build_slot].owner = self;
         g_combo_build[build_slot].generation = gen;
         g_combo_build[build_slot].connid = connid;
@@ -680,37 +731,35 @@ void shim_screen_ensure_stream(void **streams, void *stock_video) {
  * Do not touch the original message context at +0x8fc: stock needs it.
  * The only temporary ownership here is our metadata, not a client reference. */
 int shim_screen_http_send(void *client, void *msg) {
-    int claimed = 0;
+    int decision = 0;
     unsigned gen = 0;
     uint64_t ticket = 0;
-    pthread_t self = pthread_self();
     if (msg) {
         pthread_mutex_lock(&g_state_lock);
-        for (int i = 0; i < COMBINED_REQUEST_LIMIT; ++i) {
-            struct combo_build *b = &g_combo_build[i];
-            if (!b->in_use || !pthread_equal(b->owner, self)) continue;
-            gen = b->generation;
-            if (g_combo_inflight_generation == gen &&
-                gen == g_session_generation && g_session_valid &&
-                g_session != NULL && g_alt_seen_generation == gen &&
-                *(void **)((char *)msg + 0x904) == (void *)STOCK_SCREEN_RESPONSE_VA &&
-                combo_claim_request_locked(msg, gen, b->connid, &ticket)) {
-                *(void **)((char *)msg + 0x904) = (void *)&shim_screen_response;
-                claimed = 1;
-            }
-            b->in_use = 0;
-            break;
+        int stock_cb = 0;
+        if (combo_owner_has_build_locked(pthread_self())) {
+            stock_cb = *(void **)((char *)msg + 0x904) ==
+                       (void *)STOCK_SCREEN_RESPONSE_VA;
         }
-        if (!claimed && gen && g_combo_inflight_generation == gen)
-            g_combo_inflight_generation = 0;
+        decision = combo_prepare_send_locked(pthread_self(), msg, stock_cb,
+                                             &gen, &ticket);
+        if (decision == 1)
+            *(void **)((char *)msg + 0x904) = (void *)&shim_screen_response;
         pthread_mutex_unlock(&g_state_lock);
     }
 
-    int rc = http_send(client, msg);
-    if (claimed && rc != 0) {
+    if (decision < 0) {
+        /* No HTTP submission of a known stream-111 message if its session
+         * expired or response tracking is unavailable. The stock caller's
+         * nonzero-error path releases its message and continues cleanup.
+         * This does not stop a send already admitted before teardown. */
+        dbg("combined stale 111 send rejected", (int)gen);
+        return -1;
+    }
+
+    int rc = http_send(client, msg); /* No shim mutex held across stock code. */
+    if (decision == 1 && rc != 0) {
         pthread_mutex_lock(&g_state_lock);
-        /* A synchronous callback may already have consumed the record. The
-         * ticket prevents us canceling another request at the same address. */
         combo_cancel_ticket_locked(ticket);
         if (g_combo_inflight_generation == gen) g_combo_inflight_generation = 0;
         pthread_mutex_unlock(&g_state_lock);
@@ -1270,7 +1319,7 @@ int shim_session_setup(void *session, void *req, void **resp_out) {
         g_session_generation++;
 #if AK_ENABLE_COMBINED_CLUSTER
         g_combo_inflight_generation = 0;
-        memset(g_combo_build, 0, sizeof g_combo_build);
+        combo_cancel_all_builds_locked();
         /* Keep canceled tombstones until the wrapper callback arrives. */
         combo_cancel_all_requests_locked();
 #endif
@@ -1319,7 +1368,7 @@ int shim_session_setup(void *session, void *req, void **resp_out) {
         g_session_generation++;
 #if AK_ENABLE_COMBINED_CLUSTER
         g_combo_inflight_generation = 0;
-        memset(g_combo_build, 0, sizeof g_combo_build);
+        combo_cancel_all_builds_locked();
         /* Keep canceled tombstones until the wrapper callback arrives. */
         combo_cancel_all_requests_locked();
 #endif
