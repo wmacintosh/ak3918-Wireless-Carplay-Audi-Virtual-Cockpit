@@ -228,15 +228,95 @@ struct combo_build {
     unsigned generation;
     uint64_t connid;
 };
+/* An installed callback can outlive the session. Do not re-use its tracking
+ * slot until the callback is observed. Pointers are only identities while a
+ * record is held; ticket IDs distinguish simultaneous send/return paths. */
 struct combo_request {
     int in_use;
+    int canceled;
     void *message;
     unsigned generation;
     uint64_t connid;
+    uint64_t ticket;
 };
 static struct combo_build g_combo_build[COMBINED_REQUEST_LIMIT];
 static struct combo_request g_combo_request[COMBINED_REQUEST_LIMIT];
 static unsigned g_combo_inflight_generation = 0;
+static uint64_t g_combo_next_ticket = 0;
+
+/* BEGIN STEP115 REQUEST HELPERS — caller must hold g_state_lock. */
+static void combo_cancel_all_requests_locked(void) {
+    for (int i = 0; i < COMBINED_REQUEST_LIMIT; ++i) {
+        if (g_combo_request[i].in_use) {
+            g_combo_request[i].canceled = 1;
+            g_combo_request[i].generation = 0;
+            g_combo_request[i].connid = 0;
+        }
+    }
+}
+
+static int combo_claim_request_locked(void *msg, unsigned gen, uint64_t connid,
+                                      uint64_t *ticket_out) {
+    if (!msg || !gen || !connid || !ticket_out ||
+        g_combo_next_ticket == UINT64_MAX) return 0;
+
+    /* Never overwrite even a canceled record for the same address. */
+    for (int i = 0; i < COMBINED_REQUEST_LIMIT; ++i) {
+        if (g_combo_request[i].in_use && g_combo_request[i].message == msg)
+            return 0;
+    }
+    for (int i = 0; i < COMBINED_REQUEST_LIMIT; ++i) {
+        if (g_combo_request[i].in_use) continue;
+        struct combo_request *r = &g_combo_request[i];
+        r->in_use = 1;
+        r->canceled = 0;
+        r->message = msg;
+        r->generation = gen;
+        r->connid = connid;
+        r->ticket = ++g_combo_next_ticket;
+        *ticket_out = r->ticket;
+        return 1;
+    }
+    return 0; /* Fail closed if callbacks never arrive and slots fill. */
+}
+
+static void combo_cancel_ticket_locked(uint64_t ticket) {
+    if (!ticket) return;
+    for (int i = 0; i < COMBINED_REQUEST_LIMIT; ++i) {
+        struct combo_request *r = &g_combo_request[i];
+        if (r->in_use && r->ticket == ticket) {
+            r->canceled = 1;
+            r->generation = 0;
+            r->connid = 0;
+            return;
+        }
+    }
+}
+
+static void combo_consume_response_locked(void *msg,
+                                          unsigned *gen_out,
+                                          uint64_t *connid_out) {
+    *gen_out = 0;
+    *connid_out = 0;
+    if (!msg) return;
+    for (int i = 0; i < COMBINED_REQUEST_LIMIT; ++i) {
+        struct combo_request *r = &g_combo_request[i];
+        if (!r->in_use || r->message != msg) continue;
+        unsigned tracked_gen = r->generation;
+        if (!r->canceled && tracked_gen != 0 &&
+            tracked_gen == g_session_generation &&
+            g_session_valid && g_session != NULL) {
+            *gen_out = tracked_gen;
+            *connid_out = r->connid;
+        }
+        memset(r, 0, sizeof *r);
+        if (tracked_gen != 0 && g_combo_inflight_generation == tracked_gen)
+            g_combo_inflight_generation = 0;
+        return;
+    }
+}
+/* END STEP115 REQUEST HELPERS */
+
 static void shim_screen_response(void *msg);
 #endif
 
@@ -376,9 +456,8 @@ void shim_session_teardown(void *session) {
 #if AK_ENABLE_COMBINED_CLUSTER
         g_combo_inflight_generation = 0;
         memset(g_combo_build, 0, sizeof g_combo_build);
-        /* Lost/late HTTP callbacks must not consume slots across sessions.
-         * Wrapper callbacks remain installed and still call stock. */
-        memset(g_combo_request, 0, sizeof g_combo_request);
+        /* Keep canceled tombstones until the wrapper callback arrives. */
+        combo_cancel_all_requests_locked();
         /* A late callback still runs stock, but is forbidden to start transport. */
 #endif
 
@@ -603,6 +682,7 @@ void shim_screen_ensure_stream(void **streams, void *stock_video) {
 int shim_screen_http_send(void *client, void *msg) {
     int claimed = 0;
     unsigned gen = 0;
+    uint64_t ticket = 0;
     pthread_t self = pthread_self();
     if (msg) {
         pthread_mutex_lock(&g_state_lock);
@@ -611,22 +691,12 @@ int shim_screen_http_send(void *client, void *msg) {
             if (!b->in_use || !pthread_equal(b->owner, self)) continue;
             gen = b->generation;
             if (g_combo_inflight_generation == gen &&
-                *(void **)((char *)msg + 0x904) == (void *)STOCK_SCREEN_RESPONSE_VA) {
-                /* Recycled allocator addresses must never match stale entries. */
-                for (int j = 0; j < COMBINED_REQUEST_LIMIT; ++j) {
-                    if (g_combo_request[j].in_use && g_combo_request[j].message == msg)
-                        g_combo_request[j].in_use = 0;
-                }
-                for (int j = 0; j < COMBINED_REQUEST_LIMIT; ++j) {
-                    if (g_combo_request[j].in_use) continue;
-                    g_combo_request[j].in_use = 1;
-                    g_combo_request[j].message = msg;
-                    g_combo_request[j].generation = gen;
-                    g_combo_request[j].connid = b->connid;
-                    *(void **)((char *)msg + 0x904) = (void *)&shim_screen_response;
-                    claimed = 1;
-                    break;
-                }
+                gen == g_session_generation && g_session_valid &&
+                g_session != NULL && g_alt_seen_generation == gen &&
+                *(void **)((char *)msg + 0x904) == (void *)STOCK_SCREEN_RESPONSE_VA &&
+                combo_claim_request_locked(msg, gen, b->connid, &ticket)) {
+                *(void **)((char *)msg + 0x904) = (void *)&shim_screen_response;
+                claimed = 1;
             }
             b->in_use = 0;
             break;
@@ -639,13 +709,9 @@ int shim_screen_http_send(void *client, void *msg) {
     int rc = http_send(client, msg);
     if (claimed && rc != 0) {
         pthread_mutex_lock(&g_state_lock);
-        for (int i = 0; i < COMBINED_REQUEST_LIMIT; ++i) {
-            if (g_combo_request[i].in_use && g_combo_request[i].message == msg) {
-                g_combo_request[i].in_use = 0;
-                /* Leave callback wrapper intact; it always delegates to stock. */
-                break;
-            }
-        }
+        /* A synchronous callback may already have consumed the record. The
+         * ticket prevents us canceling another request at the same address. */
+        combo_cancel_ticket_locked(ticket);
         if (g_combo_inflight_generation == gen) g_combo_inflight_generation = 0;
         pthread_mutex_unlock(&g_state_lock);
     }
@@ -680,21 +746,15 @@ static int combined_response_port(void *msg) {
 }
 
 static void shim_screen_response(void *msg) {
-    /* Parse while the HTTP response is still live, but always call stock. */
+    /* First claim the matching record, rejecting canceled or stale sessions.
+     * Parse only a validated request while the HTTP response is still live.
+     * The stock callback must always run, including for unmatched responses. */
     unsigned gen = 0;
     uint64_t connid = 0;
-    int port = combined_response_port(msg);
     pthread_mutex_lock(&g_state_lock);
-    for (int i = 0; i < COMBINED_REQUEST_LIMIT; ++i) {
-        if (g_combo_request[i].in_use && g_combo_request[i].message == msg) {
-            gen = g_combo_request[i].generation;
-            connid = g_combo_request[i].connid;
-            g_combo_request[i].in_use = 0;
-            break;
-        }
-    }
-    if (g_combo_inflight_generation == gen) g_combo_inflight_generation = 0;
+    combo_consume_response_locked(msg, &gen, &connid);
     pthread_mutex_unlock(&g_state_lock);
+    int port = (gen && connid) ? combined_response_port(msg) : 0;
 
     ((void (*)(void *))STOCK_SCREEN_RESPONSE_VA)(msg);
 
@@ -1211,9 +1271,8 @@ int shim_session_setup(void *session, void *req, void **resp_out) {
 #if AK_ENABLE_COMBINED_CLUSTER
         g_combo_inflight_generation = 0;
         memset(g_combo_build, 0, sizeof g_combo_build);
-        /* Lost/late HTTP callbacks must not consume slots across sessions.
-         * Wrapper callbacks remain installed and still call stock. */
-        memset(g_combo_request, 0, sizeof g_combo_request);
+        /* Keep canceled tombstones until the wrapper callback arrives. */
+        combo_cancel_all_requests_locked();
 #endif
         session_changed = 1;
     }
@@ -1261,9 +1320,8 @@ int shim_session_setup(void *session, void *req, void **resp_out) {
 #if AK_ENABLE_COMBINED_CLUSTER
         g_combo_inflight_generation = 0;
         memset(g_combo_build, 0, sizeof g_combo_build);
-        /* Lost/late HTTP callbacks must not consume slots across sessions.
-         * Wrapper callbacks remain installed and still call stock. */
-        memset(g_combo_request, 0, sizeof g_combo_request);
+        /* Keep canceled tombstones until the wrapper callback arrives. */
+        combo_cancel_all_requests_locked();
 #endif
         need_retire = 1;
     }
