@@ -2,7 +2,16 @@
 # Step 121: read-only native request lifecycle disassembly from verified stock ELF.
 set -euo pipefail
 
-ROOT="${AK3918_ROOT:-$HOME/AK3918/01_Development/AK3918_Diagnostics/ak3918-sigsegv-fix}"
+# The verified stock binary lives in the local diagnostics folder, not GitHub.
+# Prefer the location used in the recent Mac sessions; allow an explicit override.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [[ -n "${AK3918_ROOT:-}" ]]; then
+    ROOT="$AK3918_ROOT"
+elif [[ -f "$HOME/AK3918_Diagnostics/stock_analysis/sdDongle" ]]; then
+    ROOT="$HOME/AK3918_Diagnostics"
+else
+    ROOT="$HOME/AK3918/01_Development/AK3918_Diagnostics/ak3918-sigsegv-fix"
+fi
 STOCK="$ROOT/stock_analysis/sdDongle"
 REPORT="${1:-$HOME/Desktop/AK3918_step121_native_request_lifecycle.txt}"
 EXPECTED="b2e32b82a37667500ca4f1c8266604bf28cc923ac94343907eb68c843d92e0a1"
@@ -38,9 +47,10 @@ dump() {
     printf "\n===== %s =====\n" "$1"
     "$OBJDUMP" -d --start-address="$2" --stop-address="$3" "$STOCK"
 }
-dump "OUTGOING REQUEST INITIALIZATION" 0x2f6b8 0x2f850
-dump "STREAM 111 INSERTION / SERIALIZE / SEND CALLS" 0x2fa90 0x2fbc0
-dump "NATIVE SEND FAILURE AND RELEASE PATHS" 0x2fbe8 0x2fe40
+# Preserve every instruction through the function's common cleanup.
+# The previous disjoint windows omitted 0x2f850..0x2fa90 and
+# 0x2fbc0..0x2fbe8, making a complete control-flow audit impossible.
+dump "COMPLETE NATIVE OUTGOING REQUEST AND CLEANUP" 0x2f6b8 0x30310
 dump "PLIST SERIALIZATION FUNCTION" 0x8d0a0 0x8d3c0
 dump "HTTP MESSAGE CONSTRUCTION" 0xa6d08 0xa6f40
 dump "HTTP SEND FUNCTION" 0xa6974 0xa6d08
@@ -49,3 +59,9 @@ dump "HTTP SEND FUNCTION" 0xa6974 0xa6d08
 echo "PASS: Step 121 report created at $REPORT"
 ls -lh "$REPORT"
 echo "No firmware was modified, packaged, or installed."
+
+# Post-process only the read-only report; never invoke firmware packaging.
+if command -v python3 >/dev/null 2>&1 && [[ -f "$SCRIPT_DIR/step122_native_request_paths.py" ]]; then
+    SUMMARY="${REPORT%.txt}_paths.md"
+    python3 "$SCRIPT_DIR/step122_native_request_paths.py" "$REPORT" --output "$SUMMARY"
+fi
