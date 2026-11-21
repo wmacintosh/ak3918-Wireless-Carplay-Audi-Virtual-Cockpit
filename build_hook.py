@@ -335,6 +335,13 @@ def make_tar(outdir):
     print("wrote", tar, os.path.getsize(tar), "md5", hashlib.md5(open(tar, "rb").read()).hexdigest())
 
 def main():
+    # The explicit legacy packaging flag must not bypass the unresolved
+    # native send/teardown race in stream-111 combined mode.
+    if ENABLE_COMBINED_CLUSTER and os.environ.get("AK_STEP100_ALLOW_UNVERIFIED_PACKAGE") == "1":
+        raise SystemExit(
+            "REFUSING combined stream-111 firmware packaging: Step 125 "
+            "teardown/send race remains unresolved (source-only experiment)."
+        )
     os.makedirs(DST, exist_ok=True)
     for f in LIBS:
         open(os.path.join(DST, f), "wb").write(open(os.path.join(SRC, f), "rb").read())
