@@ -26,6 +26,10 @@ jobs:
         run: python3 tests/run_step115_host.py
       - name: Step 120 send gate and expected orphan-association diagnostic
         run: python3 tests/run_step120_host.py
+      - name: Step 122 read-only disassembly parser and control-flow tests
+        run: |
+          python3 -m py_compile scripts/step122_native_request_paths.py tests/test_step122_paths.py
+          python3 tests/test_step122_paths.py
       - name: Report safety limitations
         if: always()
         run: |
