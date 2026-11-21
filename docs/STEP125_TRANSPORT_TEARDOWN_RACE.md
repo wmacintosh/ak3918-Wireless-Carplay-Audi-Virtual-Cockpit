@@ -10,7 +10,7 @@ Step 121 captured the verified stock ARM `sdDongle` executable (SHA-256 `b2e32b8
 - `0x2fb04`, `0x2fb58`: independent failure decisions can bypass sending after publication.
 - `0x2fb90`: stock writes the response callback at `msg+0x904`.
 - `0x2fbac`: native client pointer is loaded into `r0`; `0x2fbb0` calls stock `http_send(client,msg)`.
-- `0xa6974`: stock `http_send` implementation. It prepares message fields, including `msg+0x8bc..0x8d0`, and calls an internal transport/dispatch routine at `0xa1900` (`0xa6a68`) on its success path. The current Step 121 disassembly does **not** include the body of `0xa1900`, so synchronous callback behavior and transport lifetime are unverified.
+- `0xa6974`: stock `http_send` implementation. It prepares message fields, including `msg+0x8bc..0x8d0`, calls the same reference-management helper `0x82c74` on both the message (`0xa6a4c`) and client (`0xa6a54`), stores the client at `msg+0x8ec` (`0xa6a5c`), and calls native transport enqueue `0xa1900` (`0xa6a6c`). Step 125 now captures `0xa1900` and shows its lock/queue behavior. Whether `0x82c74` actually increments references, and how the queue drains, still require verification.
 - `0x2fe1c..0x2fe38`: native SETUP cleanup releases the outgoing CF array and local HTTP message.
 - `shim_session_finalize` calls `shim_session_teardown` before the stock finalizer. Under `g_state_lock`, teardown marks session invalid and cancels combined builds/requests.
 
@@ -27,7 +27,7 @@ This matches the *ordering* in `shim_screen_http_send`: there is no barrier betw
 
 ## Why not solve this by simply locking around `http_send`?
 
-Doing so might serialize teardown, but it also holds an application lock during unreviewed native transport code. The stock call reaches `0xa1900`, whose callback/reentrancy behavior has not yet been verified. If native send dispatches a synchronous response or a teardown callback that also needs the lock, an unconditional mutex could deadlock. A correct protocol may require an explicit transport admission barrier, pinned session lifetime and a carefully ordered nonblocking finalizer.
+Doing so might serialize teardown, but it also holds an application lock during unreviewed native transport code. At `0xa19d4..0xa1b20`, the enqueue path holds a native mutex at queue-object offset `0x2c`. At `0xa1a3c`, it can invoke an indirect process callback while that mutex is held (argument `r0=0`); this is not confirmed to be the HTTP response callback. If a callback or notifier indirectly reenters shim session teardown, holding `g_state_lock` across the native call could deadlock. The queue consumer is not yet traced. A correct protocol may require an explicit transport admission barrier, pinned session lifetime and a carefully ordered nonblocking finalizer.
 
 **Do not introduce such a lock until the stock send, dispatch, response callback and finalizer paths are understood.**
 
@@ -61,10 +61,14 @@ The script verifies stock checksum, uses read-only Docker mounts, writes to a te
 
 ## Remaining questions
 
-1. Can the stock `http_send` / `0xa1900` path invoke the response or teardown synchronously?
-2. What retains the HTTP message and session while the native HTTP queue is active, and when is the reference released?
+1. What is the indirect function invoked by `0xa1a3c` under the queue mutex, and can it reenter any shim path?
+2. Do the paired calls to `0x82c74` retain the message and HTTP client, and what releases them? This is distinct from retaining the receiver session.
 3. Can the session finalizer race an active `http_send` and safely return before that send completes?
 4. Can native cancellation be coordinated without blocking an event loop or introducing a lock inversion?
 5. Are stock error cleanup and callback cancellation still valid on the exact AK3918 ARM/uClibc build?
 
 **No runtime/deployment approval is implied by passing host tests.** Preserve the known-good MMI and verified stock recovery firmware.
+
+## Step 125 report received — 2026-11-21
+
+The uploaded `AK3918_step125_native_http_transport.txt` includes the complete `0xa1900..0xa1b20` enqueue path, stock screen response at `0x2ec7c..0x2ee8c`, and the beginning of the session finalizer at `0x66a40`. The source-level send-after-teardown ordering is still reproducible, but **the report does not establish a use-after-free**: the stock send invokes a reference-management helper on both client and message before enqueue. See [Step 126 ownership and dispatch review](STEP126_HTTP_OWNERSHIP_AND_DISPATCH.md) for precise evidence, unresolved interpretation and the follow-up read-only disassembly. The Step 125 script and previously generated report remain unchanged.
