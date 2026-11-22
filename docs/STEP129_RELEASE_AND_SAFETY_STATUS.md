@@ -99,4 +99,12 @@ The user ran Step 144 successfully on the physical device: `platform=AK3918AN`, 
 
 Even a successful target identity GET **cannot** establish the installed `libc.so.0` / `ld-uClibc.so.0` hashes or a verified board-specific unbrick mechanism. Research on different AK3918-based adapters is not evidence for this specific unit's recovery layout. Experimental packaging/flashing remains blocked.
 
-**No existing firmware files, device configuration, recovery tar, or `main` contents were modified by Steps 129–144.**
+## Step 145 — Stock recovery tar scope and board-marker inventory (GitHub CI pass)
+
+[Step 145](STEP145_STOCK_ARCHIVE_BOARD_RECOVERY_EVIDENCE.md) inventoried the **actual, SHA-pinned** `stock_ak_202610081659.tar` entirely offline, with no device call or disk extraction. The [CI report](../evidence/AK3918_step145_stock_recovery_inventory_ci.txt) confirms the archive holds **five application/vendor ELF files only**: it contains neither a complete installed libc/loader nor U-Boot, kernel, DTB, partition map, full rootfs or a board-specific full-flash recovery image.
+
+Constrained embedded-string counts found `suding` and one `yunlian` string inside `sdDongle`, as well as `/proc/mtd` and `/dev/mtd` in `libSdCommon.so`. **An embedded string is not a validated hardware revision, installed partition map, or recovery procedure.** Independent public AK3918AN/Suding adapters exhibit differing product and firmware version labels, so those labels alone cannot select an appropriate bootloader recovery mechanism.
+
+The verified stock archive is appropriate for the known application-level CGI restore **only while HTTP is functioning**. The hardware revision, installed `/lib/libc.so.0`, actual loader search/relocations, flash layout, independent unbrick mechanism, and live CarPlay stream-111 media all remain unverified. **Combined experimental packaging and flashing stay blocked.** No further build is required until device-specific evidence is obtained.
+
+**No existing firmware files, device configuration, recovery tar, or `main` contents were modified by Steps 129–145.**
