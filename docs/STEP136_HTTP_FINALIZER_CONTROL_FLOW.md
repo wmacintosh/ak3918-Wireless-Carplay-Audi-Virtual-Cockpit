@@ -48,6 +48,22 @@ The Step 134 report is not necessary for this narrower extraction; the Step 135 
 4. How do the car-side invalidation, pending-work queue retain and global queue destructor interact with that final release?
 5. Can unsuccessful node allocation still strand a retained client/message without a callback? A zero HTTP send return does not prove insertion, as established in Step 133.
 
+## User-run extraction result — PASS
+
+The user fast-forwarded the experimental branch from `e87d1f2` to `e110f97` and ran `bash scripts/step136_extract_http_finalizer.sh` on their Mac. The terminal output confirmed:
+
+```text
+PASS: stock class record finalize candidate 0xa4b08 at +0x10; name=b'HTTPClient'
+PASS: stock finalizer candidate instructions and queue lifecycle anchors captured
+NOTE: finalizer queue release and callback lifetime require manual control-flow review
+PASS: Step 136 read-only HTTP finalizer report at /Users/wademacintosh/Desktop/AK3918_step136_http_finalizer.txt
+No executable, archive, device setting or recovery firmware changed.
+```
+
+This confirms the original-stock SHA-256 check, the `HTTPClient` class name and on-disk `finalize` slot candidate, and successful read-only disassembly extraction. **The full Step 136 disassembly report has not yet been uploaded or independently reviewed.** The extractor's PASS does not prove that `0xa4b08` releases `client+0x08`, that callbacks always run before queue teardown, or that a zero-return dispatch successfully enqueued a message.
+
+**Pending:** upload `~/Desktop/AK3918_step136_http_finalizer.txt` to analyze actual finalizer instructions and release ordering. Continue to preserve callback tombstones until a matching native callback; no runtime-source change, packaging or flashing is authorized.
+
 ## Tests and safety gate
 
 `tests/test_step136_finalizer_gate.py` pins the original uploaded class record, its on-disk finalizer candidate, absence of an observed slot relocation and the script's SHA-256/read-only contract. It verifies shell and embedded Python syntax, the ten native disassembly ranges and continuation of fail-closed callback tombstones in `altscreen.c`.
