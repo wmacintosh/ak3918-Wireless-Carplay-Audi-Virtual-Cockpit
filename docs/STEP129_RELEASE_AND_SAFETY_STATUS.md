@@ -71,4 +71,10 @@ The experimental branch includes [Step 130's old-session phone-command drain](ST
 
 [Step 140](STEP140_STREAM111_SOURCE_COMPATIBILITY.md) adds a source-derived C host test for original stream 110 plus experimental stream 111, the correlated send/response callback, stale-session gating and port validation. It also verifies by C preprocessing and Python AST that the two experimental screen hooks at `0x2fadc` and `0x2fbb0` are installed only under the combined flag. The tests are not evidence of a functional Audi Virtual Cockpit media stream, correct native plist serialization, or runtime-safe target integration. Experimental packaging, deployment and unverified firmware flashing remain disallowed.
 
-**No existing firmware files, device configuration, recovery tar, or `main` contents were modified by Steps 129–140.**
+## Step 141 offline pre-flash input and recovery integrity gate — no build
+
+The source-only [Step 141 pre-flash gate](STEP141_EXPERIMENTAL_PRE_FLASH_GATE.md) adds a **read-only** Mac-side script that checks the builder's exact original `extracted/sdDongle` SHA-256 and known ARM callsites; checks proposed trampoline placement **in memory only**; checks the historical stock recovery tar hash and matching original library members; and refuses unclean WIP trees, wrong build flags or the legacy package mode. Host CI covers negative-control fixtures only; a successful CI result does not prove that the user's local inputs pass.
+
+The script's result is **not** a flash authorization. Before any experimental installation, the repaired/patched ELF, loader ABI/import resolution and target recovery method independent of booted Wi-Fi/HTTP CGI must be reviewed. The historical `flash_ak.py` selects `ak_hook.tar` or `--stock`, not `ak_hook_step128_test.tar`; do not rename experimental firmware to bypass that separation.
+
+**No existing firmware files, device configuration, recovery tar, or `main` contents were modified by Steps 129–141.**
