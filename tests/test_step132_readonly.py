@@ -32,7 +32,7 @@ class Step132ReadOnly(unittest.TestCase):
         src=(ROOT/"altscreen.c").read_text()
         block=src.split("static void combo_cancel_all_requests_locked(void) {",1)[1].split(
             "static int combo_claim_request_locked(",1)[0]
-        self.assertIn("r->canceled = 1;",block)
+        self.assertIn("g_combo_request[i].canceled = 1;",block)
         self.assertNotIn("memset(r,",block)
         self.assertNotIn("cf_release(",block)
         self.assertNotIn("free(r)",block)
