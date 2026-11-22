@@ -18,10 +18,16 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - name: Host syntax — default stock path and experimental combined path
+      - name: Host syntax — all combined-stream and phone-command flag combinations
         run: |
-          cc -std=gnu11 -Wall -Wextra -Werror -fsyntax-only -DAK_ENABLE_COMBINED_CLUSTER=0 altscreen.c
-          cc -std=gnu11 -Wall -Wextra -Werror -fsyntax-only -DAK_ENABLE_COMBINED_CLUSTER=1 altscreen.c
+          for combined in 0 1; do
+            for phone in 0 1; do
+              echo "AK_ENABLE_COMBINED_CLUSTER=$combined AK_ENABLE_PHONE_CMDS=$phone"
+              cc -std=gnu11 -Wall -Wextra -Werror -fsyntax-only \
+                -DAK_ENABLE_COMBINED_CLUSTER=$combined \
+                -DAK_ENABLE_PHONE_CMDS=$phone altscreen.c
+            done
+          done
       - name: Step 115 request tracking helper checks
         run: python3 tests/run_step115_host.py
       - name: Step 120/123 native request identity and stock-isolation checks
@@ -49,9 +55,13 @@ jobs:
         run: python3 tests/test_step128_shell.py
       - name: Step 128 send-admission gate concurrency checks
         run: python3 tests/run_step128_admission_gate.py
+      - name: Step 129 archive packaging policy matrix
+        run: python3 tests/test_step129_package_policy.py
+      - name: Step 129 integrated wrapper and teardown lifecycle (host only)
+        run: python3 tests/run_step129_integrated_lifecycle.py
       - name: Report safety limitations
         if: always()
         run: |
           echo "Source-only host tests. No target ARM ABI, device runtime, or teardown/send race verification."
-          echo "Step 123 prevents the tested orphan misassociation; Step 125 still reproduces a send-after-teardown race."
+          echo "Step 125 is a historical negative control; Step 128/129 host tests cover an admission gate but do not prove device safety."
           echo "AK_ENABLE_COMBINED_CLUSTER must remain disabled for normal stock/recovery use."
