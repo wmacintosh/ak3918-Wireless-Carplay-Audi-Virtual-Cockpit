@@ -67,4 +67,8 @@ The experimental branch includes [Step 130's old-session phone-command drain](ST
 4. Reconcile the **public `main` README** separately before promoting experimental content into a release; it currently describes a historical tested package, not this branch.
 5. Do not flash the Step 128/129 experiment solely because these source checks pass.
 
-**No existing firmware files, device configuration, recovery tar, or `main` contents were modified by Step 129.**
+## Step 140 source-level stream-111 compatibility — host only
+
+[Step 140](STEP140_STREAM111_SOURCE_COMPATIBILITY.md) adds a source-derived C host test for original stream 110 plus experimental stream 111, the correlated send/response callback, stale-session gating and port validation. It also verifies by C preprocessing and Python AST that the two experimental screen hooks at `0x2fadc` and `0x2fbb0` are installed only under the combined flag. The tests are not evidence of a functional Audi Virtual Cockpit media stream, correct native plist serialization, or runtime-safe target integration. Experimental packaging, deployment and unverified firmware flashing remain disallowed.
+
+**No existing firmware files, device configuration, recovery tar, or `main` contents were modified by Steps 129–140.**
