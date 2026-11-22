@@ -107,6 +107,7 @@ int main(void) {
     CHECK(g_combo_inflight_generation == 0);
 #else
     CHECK(g_cancel_builds == 0 && g_cancel_requests == 0);
+    CHECK(g_combo_inflight_generation == 80); /* Combined mode disabled. */
 #endif
     pthread_mutex_unlock(&g_state_lock);
 
