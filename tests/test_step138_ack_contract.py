@@ -98,10 +98,15 @@ class NativeReceipt:
     proves_no_future_work_callback: bool
 
 
-def permitted_reclaim(receipt: NativeReceipt, callback_seen: bool) -> bool:
-    """Strict proposed design gate; only the stock callback is accepted today."""
+def permitted_reclaim(held_ticket: int, receipt: NativeReceipt, callback_seen: bool, *,
+                      previously_published: bool = False) -> bool:
+    """A purely hypothetical native receipt, requiring exact ticket identity."""
+    if receipt.ticket != held_ticket:
+        return False
     if callback_seen:
         return True
+    if previously_published:
+        return False
     return (
         receipt.ack == Ack.DROPPED
         and receipt.native_retains_balanced
@@ -111,7 +116,8 @@ def permitted_reclaim(receipt: NativeReceipt, callback_seen: bool) -> bool:
 
 class Tracking:
     """Candidate per-ticket receipts, with late acknowledgment races."""
-    def __init__(self):
+    def __init__(self, ticket: int = 101):
+        self.ticket = ticket
         self.state = "reserved"
         self.acks = 0
         self.deliveries = 0
@@ -129,7 +135,8 @@ class Tracking:
     def request_reclaim(self, receipt: NativeReceipt):
         if self.state == "complete":
             return
-        if permitted_reclaim(receipt, callback_seen=False):
+        if permitted_reclaim(self.ticket, receipt, callback_seen=False,
+                             previously_published=self.state == "pending"):
             self.state = "complete"
 
 
@@ -154,16 +161,16 @@ class AckFeasibility(unittest.TestCase):
             # No observation here proves the identity of queued work,
             # completion or impossibility of future callbacks.
             receipt = NativeReceipt(101,Ack.UNKNOWN,False,False)
-            self.assertFalse(permitted_reclaim(receipt,False))
+            self.assertFalse(permitted_reclaim(101,receipt,False))
 
     def test_explicit_publish_ack_is_not_http_completion(self):
         pub = NativeReceipt(101,Ack.PUBLISHED,False,False)
-        self.assertFalse(permitted_reclaim(pub,False))
-        self.assertTrue(permitted_reclaim(pub,True))
+        self.assertFalse(permitted_reclaim(101,pub,False))
+        self.assertTrue(permitted_reclaim(101,pub,True))
         # Even native ownership rollback would not authorize reclaim while
         # a previously published node might deliver a callback later.
         self.assertFalse(permitted_reclaim(
-            NativeReceipt(101,Ack.PUBLISHED,True,True),False
+            101,NativeReceipt(101,Ack.PUBLISHED,True,True),False
         ))
 
     def test_dropped_receipt_alone_cannot_free_foreign_retains(self):
@@ -176,16 +183,18 @@ class AckFeasibility(unittest.TestCase):
         for balanced, no_future, expected in cases:
             with self.subTest(balanced=balanced,no_future=no_future):
                 receipt = NativeReceipt(101,Ack.DROPPED,balanced,no_future)
-                self.assertEqual(permitted_reclaim(receipt,False),expected)
+                self.assertEqual(permitted_reclaim(101,receipt,False),expected)
 
     def test_native_receipt_must_not_apply_to_another_ticket(self):
         ticket = 9
         other = NativeReceipt(10,Ack.DROPPED,True,True)
         self.assertNotEqual(ticket,other.ticket)
-        # The caller MUST compare receipt.ticket to the held ticket.
-        # This function models safety AFTER that identity check.
+        self.assertFalse(permitted_reclaim(ticket,other,False))
         self.assertFalse(permitted_reclaim(
-            NativeReceipt(ticket,Ack.UNKNOWN,False,False),False
+            ticket,NativeReceipt(ticket,Ack.UNKNOWN,False,False),False
+        ))
+        self.assertTrue(permitted_reclaim(
+            ticket,NativeReceipt(ticket,Ack.DROPPED,True,True),False
         ))
 
     def test_ack_and_callback_race_never_resurrects_record(self):
@@ -211,6 +220,18 @@ class AckFeasibility(unittest.TestCase):
                 receipt = NativeReceipt(55,branch,False,False)
                 t.request_reclaim(receipt)
                 self.assertEqual(t.state,"reserved")
+
+    def test_conflicting_late_drop_does_not_override_prior_publication(self):
+        t = Tracking(ticket=77)
+        t.mark_published()
+        # A forged/inconsistent negative receipt after actual publication
+        # must not reclaim, even if it incorrectly claims balanced retains.
+        t.request_reclaim(NativeReceipt(77,Ack.DROPPED,True,True))
+        self.assertEqual(t.state,"pending")
+        t.on_http_completion()
+        self.assertEqual(t.state,"complete")
+        t.request_reclaim(NativeReceipt(77,Ack.DROPPED,True,True))
+        self.assertEqual(t.state,"complete")
 
     def test_callback_is_sole_current_reclaim_signal(self):
         actual = SHIM.read_text()
