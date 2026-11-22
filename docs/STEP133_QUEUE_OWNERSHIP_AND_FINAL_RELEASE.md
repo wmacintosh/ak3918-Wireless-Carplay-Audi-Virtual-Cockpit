@@ -1,6 +1,6 @@
 # Step 133 — Native queue ownership and final-release ordering
 
-**Status:** uploaded verified-stock ARM queue ownership report reviewed and archived. Normal empty→nonempty queue retain and last-work release ordering are established. Client finalizer and abnormal callback guarantee remain unproven. No runtime firmware changed.
+**Status:** native queue retain/last-work release confirmed in Step 133; the client finalizer's matching queue release was subsequently confirmed in [Step 136](STEP136_HTTP_FINALIZER_CONTROL_FLOW.md). Abnormal callback delivery remains unproven. No runtime firmware changed.
 
 ## Scope and source identity
 
@@ -114,7 +114,7 @@ Consequently, `http_send != 0` still proves a **pre-dispatch preparation failure
 
 The queue destructor `0xa01b8` reads `queue+0x30` at `0xa0250` and reports a nonempty pending-work list. It does not itself run node callbacks. The normal enqueue/drain reference pair (`0xa19ec`/`0xa30a4`) is the intended protection against premature final free **for successfully inserted work nodes**.
 
-A queue destructor with pending nodes therefore indicates an abnormal ownership or scheduling path, not an opportunity for the shim to clear all canceled tickets. The precise HTTP-client CF finalizer, global queue retirement and device-runtime behavior still need independent tracing.
+A queue destructor with pending nodes therefore indicates an abnormal ownership or scheduling path, not an opportunity for the shim to clear all canceled tickets. The client finalizer is now identified at `0xa4b08` and its release of `client+0x08` is independently verified in Step 136. Global queue retirement's exceptional interleavings and actual device-runtime behavior remain unproven.
 
 **Safety decision:** no `altscreen.c` changes. Preserve the existing eight-slot, callback-only tombstone reclamation; do not add timeouts, manual CF releases or assumed queue-cancellation shortcuts. Source-level GitHub checks are not flash authorization.
 
@@ -125,4 +125,4 @@ A queue destructor with pending nodes therefore indicates an abnormal ownership 
 - Reclaim a successfully enqueued request record only once the corresponding native completion is proven, **not** merely at client invalidation, queue free, timeout or reconnect.
 - The experimental combined stream-111 firmware is **not device-validated and not cleared for flashing**. `main`, historical firmware and stock recovery are unchanged.
 
-**Next:** [Step 134 — HTTP client CF finalizer and global queue shutdown](STEP134_CLIENT_FINALIZER_AND_GLOBAL_QUEUE.md) adds a verified-stock, read-only extraction and opcode gate to locate the client's `client+0x08` release and global queue retirement ordering. This remains a pending native evidence question; no missing-callback fix is justified by the currently verified source.
+**Later evidence:** [Step 136](STEP136_HTTP_FINALIZER_CONTROL_FLOW.md) verified that `HTTPClient` finalization releases `client+0x08` through `0xa04bc`, then clears the pointer. This establishes normal queue-reference ownership, not delivery of every asynchronous HTTP completion. No missing-callback fix is justified.
