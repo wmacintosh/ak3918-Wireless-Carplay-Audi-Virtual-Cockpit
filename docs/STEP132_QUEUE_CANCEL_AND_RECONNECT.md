@@ -74,6 +74,26 @@ The script checks the original stock ELF SHA-256 and ensures all required ARM ro
 
 The source-derived reconnect and read-only script checks passed [GitHub Actions run 44978247878](https://github.com/wmacintosh/ak3918-Wireless-Carplay-Audi-Virtual-Cockpit/actions/runs/44978247878) at commit `02b7a0e`. The report itself remains the next evidence input.
 
+## Review of uploaded Step 132 ARM report — completed
+
+The user uploaded `AK3918_step132_queue_cancellation.txt` (501 lines; verified-stock ELF checksum enforced by extraction). The file contains nine disassembly ranges requested in Step 132. The following instructions were directly inspected, rather than inferred from host simulation.
+
+| Address | Verified native instruction | What it establishes |
+| --- | --- | --- |
+| `0xa0250..0xa0258` | `ldr r3,[r4,#0x30]`; `cmp r3,#0`; conditional `beq 0xa0294` | The queue destructor explicitly checks for pending nodes |
+| `0xa0290` | `bl 0x9ec74` on the nonempty branch | The nonempty queue triggers the existing diagnostic/reporting routine, not a per-node callback |
+| `0xa0294..0xa033c` | Mutex/global cleanup and tail branch to `0xa0190` | No queue-node iteration or `blx` invocation appears in the queue destructor |
+| `0xa304c..0xa3094` | Pop queue node, unlock mutex at `0xa3080`, `blx r3` at `0xa308c`, free node at `0xa3094` | **Normal dispatch** invokes the queued callback before disposing of the work node |
+| `0xa0660..0xa0670` | `blx r3` and work-node `free` | Concurrent drain likewise invokes the queued callback |
+| `0xa4eac..0xa4ec4` | Loop over `client+0x49c` via `bl 0xa4c18` | HTTP error handling drains **already transferred messages** in the client's message list |
+| `0xa4c34..0xa4c58` | Load `msg+0x904`, `blx r3` at `0xa4c4c`, `CFRelease(msg)` at `0xa4c58` | A normally completed or canceled **listed** message receives its callback while retained |
+| `0xa6584..0xa65a4` | `CFRetain(client)` at `0xa658c`; branch to queue enqueue `0xa1900` | HTTP client invalidation itself uses the asynchronous dispatch queue |
+| `0x2a78c..0x2a79c` | Call native client invalidation, release global client, then clear global pointer | Car-side shutdown normally submits the client's invalidation work |
+
+**Resolution of the Step 132 question:** the queue destructor contains **no mechanism to execute pending-node callbacks** when it detects an unexpected nonempty queue. It follows a diagnostics/cleanup path. By contrast, normal dispatch and HTTP client error handling invoke callbacks. The disassembly still does **not prove that normal shutdown can reach the queue destructor with pending nodes**, because queuing and client reference lifetime ordinarily maintain ordering. It also cannot prove that every accepted message callback is delivered during abrupt failure, shutdown or process death.
+
+**Safety decision:** leave accepted-request tracking records fail-closed until their matching response callback; do not clear records based on session teardown, elapsed time, queue invalidation requests or an assumption that destructor diagnostics imply completion. A pending dispatch work node may not yet be in `client+0x49c` and is therefore not covered by the error handler's message-list drain. No native firmware change or speculative callback reclamation is justified by this evidence.
+
 ## Deployment decision
 
 The Step 129/130/131 source/ELF checks are distinct from live firmware validation. The combined stream-111 feature remains experimental, disabled by default; the optional test archive is not authorized for installation as a consequence of these findings. No change to `main`, stock recovery archive, or historical firmware is required.
