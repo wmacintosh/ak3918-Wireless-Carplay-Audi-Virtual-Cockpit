@@ -53,9 +53,20 @@ bash scripts/step131_extract_http_return.sh
 
 Output: `~/Desktop/AK3918_step131_http_return.txt`. The script checks the original ELF SHA-256, disassembles `0xA6974..0xA6A80` with the existing Docker toolchain and runs the exact-instruction verifier **before** publishing the report. It does not compile, patch, package or flash firmware.
 
+## Local verification — 2026-11-21
+
+After fast-forwarding the WIP branch from `6d14d60` to commit `263596b5d1c0bdc401a06b09197dd0a4b8cf9032`, the user ran both read-only validation scripts on their Mac:
+
+- `bash scripts/step131_extract_http_return.sh` — **PASS**. The script confirmed that the verified stock ARM nonzero-return branch exits before both reference retains and queue insertion, and that the enqueued path forces a zero return. The report was saved to `~/Desktop/AK3918_step131_http_return.txt`.
+- `bash scripts/step129_validate_arm_matrix.sh` — **PASS** for all four configurations: combined/phone `0/0`, `0/1`, `1/0`, and `1/1`.
+- The terminal output explicitly reported no modifications to firmware, recovery binaries, or tar archives.
+- GitHub Actions [run 44977899396](https://github.com/wmacintosh/ak3918-Wireless-Carplay-Audi-Virtual-Cockpit/actions/runs/44977899396) passed the source-level tests at the same commit.
+
+These are user-reported local results plus an independently verified GitHub Actions result. They establish source-level cross-compilation and exact-stock opcode consistency, **not** a working wireless Virtual Cockpit display, device-runtime safety, or flash readiness.
+
 ## Remaining limits
 
-1. This source change has **not** been compiled for ARM/uClibc on the user's Mac after Step 130; repeat `scripts/step129_validate_arm_matrix.sh` when preparing to validate this revised source.
+1. The Step 131 source **has** passed all four local ARM/uClibc compile/ELF checks on the tested commit. The final patched executable, runtime hooks, live CarPlay negotiation and device behaviour still require separate verification.
 2. The work remains version-specific. Do not infer the same error/queue contract for firmware with a different SHA-256.
 3. Enqueued requests that never receive a callback can **still** occupy their tombstone record indefinitely. Automatic reclamation on timeout or session teardown would be unsafe without a proven native callback-cancellation/lifetime guarantee. This is intentionally fail-closed.
 4. The parent vendor receiver-session lifetime and reconnect behavior remain separate on-device validation concerns.
