@@ -115,6 +115,10 @@ jobs:
         run: |
           python3 -m py_compile scripts/step141_readonly_firmware_preflight.py
           python3 tests/test_step141_readonly_firmware_preflight.py
+      - name: Step 141 verified-stock staging recovery archive and no-overwrite regression
+        run: |
+          python3 -m py_compile scripts/step141_stage_verified_stock_inputs.py
+          python3 tests/test_step141_stock_input_staging.py
       - name: Report safety limitations
         if: always()
         run: |
