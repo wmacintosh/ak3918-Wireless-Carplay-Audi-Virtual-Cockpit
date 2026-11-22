@@ -84,6 +84,10 @@ jobs:
           bash -n scripts/step133_extract_queue_ownership.sh
       - name: Step 133 archived native queue retain/release and allocation failure opcode checks
         run: python3 tests/test_step133_native_queue_ownership.py
+      - name: Step 134 HTTP CF finalizer and global queue shutdown extraction gate
+        run: |
+          python3 tests/test_step134_finalizer_extraction.py
+          bash -n scripts/step134_extract_client_finalizer.sh
       - name: Report safety limitations
         if: always()
         run: |
