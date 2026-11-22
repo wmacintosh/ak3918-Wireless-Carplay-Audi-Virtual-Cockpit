@@ -106,7 +106,7 @@ with tempfile.TemporaryDirectory(prefix="ak3918-step115-") as d:
     name=out/'test_step115_extracted.c'
     name.write_text(code)
     for sanitizer in ('address,undefined','undefined','none'):
-        cmd=['cc','-std=gnu11','-O1','-g','-Wall','-Wextra','-Werror','-fno-omit-frame-pointer']
+        cmd=['cc','-std=gnu11','-O1','-g','-Wall','-Wextra','-Werror','-Wno-unused-function','-fno-omit-frame-pointer']
         if sanitizer!='none':cmd+=['-fsanitize='+sanitizer]
         cmd+=[str(name),'-o',str(out/('step115_'+sanitizer.replace(',','_')))]
         subprocess.run(cmd,check=True)
