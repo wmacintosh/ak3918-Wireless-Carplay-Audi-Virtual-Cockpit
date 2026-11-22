@@ -1,6 +1,27 @@
 # Step 143 — Offline loader dependency and independent recovery status
 
-**Status: source-only audit prepared. Mac-side exact ARM/uClibc symbol provider report pending.** This step neither patches nor packages firmware and cannot install it. **No change to `altscreen.c`, `build_hook.py`, stock image, recovery archive, `main`, or device settings.**
+**Status: user-run Mac ARM/uClibc provider inventory PASSED (33 of 33 strong imports covered by available development-toolchain libc). Physical target loader and non-CGI recovery remain unverified.** This step neither patches nor packages firmware and cannot install it. **No change to `altscreen.c`, `build_hook.py`, stock image, recovery archive, `main`, or device settings.**
+
+## Result from the actual Mac run
+
+The complete user-uploaded [Step 143 ARM loader and recovery report](../evidence/AK3918_step143_loader_recovery_audit.txt) was produced on WIP commit `860c3f263092`. It repeated the Step 141 exact-stock integrity audit and built an ephemeral `libSdH.so` with combined stream 111 and phone commands enabled.
+
+| Check | Observed |
+| --- | --- |
+| Hook format | 32-bit ARM, soft-float uClibc; `DT_NEEDED=libc.so.0`; BIND_NOW |
+| `DT_NEEDED` in original `sdDongle` | Original stock includes `libc.so.0` among eleven linked libraries |
+| Hook imports | **33 strong**, 5 weak |
+| Strong imports covered by symbol name | **33 / 33** |
+| Strong imports unmatched against provided symbols | **0** |
+| pthread APIs | `pthread_create`, detach, equal, cond wait/broadcast, mutex init/destroy/lock/unlock and self all provided by **toolchain** `libc.so.0` |
+| Separate development `libpthread.so.0` | Not found; no independently required separate library surfaced |
+| Temporary hook SHA-256 | `6e70f606501354267567873ec75d291914a5f946a04be3730dc4f085575d1bd9`, matching the Step 142 ephemeral build |
+| Development uClibc SHA-256 | `42891edc20c0f47833248f0dc312199e051e966e2a9b0e859f0137ebe55603d7` |
+| Recovery | Stock tar and five original vendor members match; `flash_ak.py` has CGI-dependent recovery only; `--check-only` still uploads chunks |
+
+**Interpretation:** The development toolchain satisfies the hook's complete *strong symbol-name inventory*; the original vendor libraries are not needed as providers for these 33 names in the tested configuration. This removes the question of whether a separate *development* pthread library must be linked. It **does not** show that the actual dongle's installed `/lib/libc.so.0` is byte-identical or exports compatible symbol versions, or that the bootloader resolves the required relocations. The original five stock tar members do not contain the installed root filesystem's libc.
+
+Even the source run's positive `PASS` is a **static-available-provider** check only. Its explicit `BLOCKED FOR FLASH` result is still in force.
 
 ## Why this gate is necessary
 
@@ -61,4 +82,4 @@ If any required available symbol is not resolved, the script prints `UNKNOWN` an
 
 ## Follow-up
 
-Review the complete Mac report for unresolved strong symbols and the source of each pthread symbol (stock vs Buildroot libc/pthread). Depending on what the *original vendor* and toolchain libraries actually export, a later **read-only** target-library inventory may be needed to check exact installed libc and loader identity. Do not present a successfully compiled ARM object, a static matched symbol name, or a reachable firmware update CGI as proof the experimental flash is recoverable.
+**The available-provider check is complete: 33/33 strong symbols were found, all in the development sysroot's `libc.so.0`.** Next, establish exact installed target `/lib/libc.so.0` and `/lib/ld-uClibc.so.0` identity through a separately confirmed read-only mechanism, and document a board-specific recovery route that works if Wi-Fi/CGI is unavailable. Do not treat the development sysroot hash as the target's hash. Do not present a successfully compiled ARM object, a static matched symbol name, or a reachable firmware update CGI as proof the experimental flash is recoverable.
