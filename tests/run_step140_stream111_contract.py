@@ -223,7 +223,10 @@ static int http_send(void *client,void *msg) {
     CHECK(client && msg);
     ++send_calls;
     last_http_msg=msg;
-    last_native_callback_field=*(char **)((char*)msg+0x904);
+    /* Test double reads opaque ARM callback bytes without requiring its
+     * alignment to match a 64-bit host's pointer representation. */
+    memcpy(&last_native_callback_field,(char*)msg+0x904,
+           sizeof last_native_callback_field);
     return send_result;
 }
 static void dbg(const char *s,int n) {(void)s;(void)n;}
