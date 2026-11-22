@@ -105,6 +105,8 @@ jobs:
         run: python3 tests/run_step137_accepted_send_ambiguity.py
       - name: Step 138 stock enqueue acknowledgment observability and race contract
         run: python3 tests/test_step138_ack_contract.py
+      - name: Step 139 stock SETUP wait baseline and callback-only tombstone preservation
+        run: python3 tests/test_step139_stock_wait_baseline.py
       - name: Report safety limitations
         if: always()
         run: |
