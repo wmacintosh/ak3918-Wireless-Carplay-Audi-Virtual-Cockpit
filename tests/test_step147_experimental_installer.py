@@ -56,7 +56,7 @@ class Client:
 
 def synthesize_bundle(folder):
     folder=Path(folder)
-    fixture={name:b"\x7fELF"+"fake-fixture-"+name.encode()
+    fixture={name:b"\x7fELF"+b"fake-fixture-"+name.encode()
              for name in pkg.EXPECTED_ORDER}
     sha={name:hashlib.sha256(blob).hexdigest()
          for name,blob in fixture.items()}
