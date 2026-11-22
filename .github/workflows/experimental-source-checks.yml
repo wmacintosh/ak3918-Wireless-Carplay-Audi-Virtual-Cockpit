@@ -76,6 +76,8 @@ jobs:
           bash -n scripts/step132_extract_queue_cancellation.sh
       - name: Step 132 accepted-request reconnect stress
         run: python3 tests/run_step132_callback_reconnect.py
+      - name: Step 132 pinned native queue destruction and callback control-flow evidence
+        run: python3 tests/test_step132_native_report.py
       - name: Report safety limitations
         if: always()
         run: |
