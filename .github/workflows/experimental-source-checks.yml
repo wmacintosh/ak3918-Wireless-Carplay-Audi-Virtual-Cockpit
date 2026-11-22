@@ -88,6 +88,11 @@ jobs:
         run: |
           python3 tests/test_step134_finalizer_extraction.py
           bash -n scripts/step134_extract_client_finalizer.sh
+      - name: Step 135 pinned stock CF class registration and read-only ELF32 data audit
+        run: |
+          python3 tests/test_step135_class_descriptor.py
+          bash -n scripts/step135_extract_cf_class_descriptor.sh
+          python3 -m py_compile scripts/step135_decode_cf_descriptor.py
       - name: Report safety limitations
         if: always()
         run: |
