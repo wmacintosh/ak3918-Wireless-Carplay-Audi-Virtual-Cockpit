@@ -100,6 +100,12 @@ The uploaded **501-line** report is preserved in `evidence/AK3918_step132_queue_
 
 These checks guard the correspondence between the **specific stock ARM disassembly** and the documented safety decision. They do **not** simulate hardware, prove normal client invalidation always finishes, or authorize timeout reclamation.
 
+## Later Step 133 refinement — native queue reference ownership
+
+The [Step 133 verified-stock audit](STEP133_QUEUE_OWNERSHIP_AND_FINAL_RELEASE.md) proves that a successfully **inserted** work node is protected by a queue reference taken on the empty-to-nonempty transition (`0xa19ec`) and released by the serial worker after its final callback (`0xa30a4`). The HTTP client separately retains its queue at initialization (`0xa64a8`).
+
+However, `dispatch_async_f` can fail to allocate its 12-byte node (`calloc` at `0xa1980`) and return without enqueueing work. The outer HTTP sender unconditionally returns zero after the dispatch attempt. Consequently, Step 132's use of "successfully queued" for `http_send == 0` should be interpreted as **accepted by the outer HTTP send function, not proven inserted into the queue**. Callback-only ticket reclamation remains the appropriate fail-closed policy.
+
 ## Deployment decision
 
 The Step 129/130/131 source/ELF checks are distinct from live firmware validation. The combined stream-111 feature remains experimental, disabled by default; the optional test archive is not authorized for installation as a consequence of these findings. No change to `main`, stock recovery archive, or historical firmware is required.
