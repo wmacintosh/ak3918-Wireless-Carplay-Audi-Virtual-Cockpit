@@ -1,6 +1,6 @@
 # Step 135 — Locate the HTTP-client Core Foundation class descriptor
 
-**Status:** verified-stock class descriptor report uploaded, inspected and archived. The Core Foundation finalizer-slot candidate is **`0xa4b08`**; its actual function body and queue-release order still require disassembly. No runtime source or firmware changed.
+**Status:** verified-stock class descriptor report uploaded, inspected and archived. Its `HTTPClient` finalizer pointer at **`0xa4b08`** and queue-release behavior were subsequently confirmed by uploaded [Step 136 ARM evidence](../evidence/AK3918_step136_http_finalizer.txt). No runtime source or firmware changed.
 
 ## Why this follows Step 134
 
@@ -104,4 +104,4 @@ The file identifies a much narrower target: `0xa4b08`. That is **not** yet evide
 
 No `altscreen.c` or `build_hook.py` modifications are authorized by this evidence. The caller's `http_send == 0` still cannot prove queue-node insertion (Step 133 identified internal `calloc` failure), and neither CF finalization nor process shutdown has been established as a reliable cancellation barrier. **Do not erase callback tombstones or manually release retained native objects by inference**. This work does not authorize flashing the experimental stream-111 firmware.
 
-**Next evidence gate:** the runtime class record is file-backed and now identifies `0xa4b08` at its finalizer slot; disassemble that function to determine whether it releases `client+0x08` and the ordering relative to queue-held references. Do not claim a callback-completion barrier without that native proof.
+**Subsequent resolution:** Step 136 disassembled `0xa4b08` and directly observed `ldr r0,[client,#8]` at `0xa4b10`, `bl 0xa04bc` at `0xa4b1c`, and `str 0,[client,#8]` at `0xa4b24`. The client-owned queue reference is released first; this still **does not** prove every HTTP message receives its completion callback.
