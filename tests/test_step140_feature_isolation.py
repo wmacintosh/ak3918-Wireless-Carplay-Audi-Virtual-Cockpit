@@ -79,17 +79,13 @@ class HookIsolation(unittest.TestCase):
             self.assertIn(text,on)
         # The normal setup and session-finalizer hooks remain present in both
         # modes; this is *screen-111 isolation*, not a bitwise-stock ELF claim.
-        for text in ("void shim_session_finalize(void *session)",
-                     "void **hook_slot = (void **)0x001369fcu"):
-            if text.startswith("void shim_session"):
-                self.assertIn(text,off)
-                self.assertIn(text,on)
+        self.assertIn("void shim_session_finalize(void *session)",off)
+        self.assertIn("void shim_session_finalize(void *session)",on)
 
     def test_no_combined_transport_from_unpaired_stock_request(self):
         # The source-derived C integration test is the executable check;
         # this check ensures the feature-off path cannot even define it.
         on=self.c.split("void shim_screen_ensure_stream(",1)[1]
-        on=on.split("void shim_screen_ensure_stream(",1)[0] if False else on
         self.assertIn("cf_arr_ensure(streams, stock_video);",on)
         self.assertIn("if (!streams || !*streams || *GPAIRVERIFY_HK != 0) return;",on)
         self.assertIn("if (!gen) return;",on)
