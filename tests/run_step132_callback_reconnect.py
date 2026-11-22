@@ -15,7 +15,9 @@ source = (ROOT / "altscreen.c").read_text()
 start = source.index("struct combo_build {")
 stop_marker = "/* END STEP115 REQUEST HELPERS */"
 stop = source.index(stop_marker, start) + len(stop_marker)
-helpers = source[start:stop]
+helpers = source[start:stop].replace(
+    "static struct combo_build g_combo_build[COMBINED_REQUEST_LIMIT];\n", ""
+)
 
 response = source.split("static void shim_screen_response(void *msg) {", 1)[1]
 response = response.split("static ", 1)[0]
