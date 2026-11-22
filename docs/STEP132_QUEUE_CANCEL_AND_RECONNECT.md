@@ -59,7 +59,7 @@ git pull --ff-only
 bash scripts/step132_extract_queue_cancellation.sh
 ```
 
-Output: `~/Desktop/AK3918_step132_queue_cancellation.txt`. The script refuses a wrong stock SHA-256 and does not build, alter or package firmware. Attach this report for targeted analysis of queue destruction/callback delivery semantics.
+Output: `~/Desktop/AK3918_step132_queue_cancellation.txt`. The script refuses a wrong stock SHA-256 and does not build, alter or package firmware. The report has now been uploaded, reviewed and archived as [pinned Step 132 ARM evidence](../evidence/AK3918_step132_queue_cancellation.txt); CI checks its critical opcodes through `tests/test_step132_native_report.py`.
 
 ## Local extraction validation — user-reported
 
@@ -93,6 +93,12 @@ The user uploaded `AK3918_step132_queue_cancellation.txt` (501 lines; verified-s
 **Resolution of the Step 132 question:** the queue destructor contains **no mechanism to execute pending-node callbacks** when it detects an unexpected nonempty queue. It follows a diagnostics/cleanup path. By contrast, normal dispatch and HTTP client error handling invoke callbacks. The disassembly still does **not prove that normal shutdown can reach the queue destructor with pending nodes**, because queuing and client reference lifetime ordinarily maintain ordering. It also cannot prove that every accepted message callback is delivered during abrupt failure, shutdown or process death.
 
 **Safety decision:** leave accepted-request tracking records fail-closed until their matching response callback; do not clear records based on session teardown, elapsed time, queue invalidation requests or an assumption that destructor diagnostics imply completion. A pending dispatch work node may not yet be in `client+0x49c` and is therefore not covered by the error handler's message-list drain. No native firmware change or speculative callback reclamation is justified by this evidence.
+
+## Reproducible evidence gate
+
+The uploaded **501-line** report is preserved in `evidence/AK3918_step132_queue_cancellation.txt`. New test `tests/test_step132_native_report.py` reads the actual captured ARM instructions and checks the exact opcodes at the destructor pending-list branch, normal dispatch `blx` and node free, HTTP completion callback/release, error-handler drain, and client invalidation enqueue. The test additionally ensures the destructor has no per-node indirect callback call and the shim still leaves canceled accepted-request records in place.
+
+These checks guard the correspondence between the **specific stock ARM disassembly** and the documented safety decision. They do **not** simulate hardware, prove normal client invalidation always finishes, or authorize timeout reclamation.
 
 ## Deployment decision
 
