@@ -103,6 +103,8 @@ jobs:
         run: python3 tests/test_step137_dispatch_ambiguity.py
       - name: Step 137 source-derived rc==0 callback ambiguity and unsafe-reclaim negative controls
         run: python3 tests/run_step137_accepted_send_ambiguity.py
+      - name: Step 138 stock enqueue acknowledgment observability and race contract
+        run: python3 tests/test_step138_ack_contract.py
       - name: Report safety limitations
         if: always()
         run: |
