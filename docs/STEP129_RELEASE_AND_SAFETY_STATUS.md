@@ -107,4 +107,12 @@ Constrained embedded-string counts found `suding` and one `yunlian` string insid
 
 The verified stock archive is appropriate for the known application-level CGI restore **only while HTTP is functioning**. The hardware revision, installed `/lib/libc.so.0`, actual loader search/relocations, flash layout, independent unbrick mechanism, and live CarPlay stream-111 media all remain unverified. **Combined experimental packaging and flashing stay blocked.** No further build is required until device-specific evidence is obtained.
 
-**No existing firmware files, device configuration, recovery tar, or `main` contents were modified by Steps 129–145.**
+## Step 146 — Physical exterior/package SKU identification (photographs, no board exposed)
+
+[Step 146](STEP146_RM_KPL083_2_PACKAGING_ID.md) records user-provided photos of the closed dongle and product box. The box prints **`RM-KPL083-2`** and **Huizhou Ruirong Huake Electronics Co., Ltd.**, narrowing retail provenance and a potential manufacturer-support route. This is **not a verified PCB revision**. Photo bytes and the unique retail barcode have **not** been uploaded to the repository.
+
+External listings/manuals for broader `RM-KPL083` variants appear under multiple brands, and a generic RM-KPL083 manual specifies **Cortex-A7** rather than the verified firmware project's ARM926EJ-S architecture. **Do not reuse a generic retail model's firmware, rescue trigger, loader, PCB pinout or flash layout.** No public source found confirms the exact suffix's bootloader or recovery process.
+
+**Remaining hard blocks:** actual installed uClibc/loader identity, safe target runtime and callback behavior, specific board revision, and independently validated non-CGI unbrick. Experimental stream 111 flashing remains prohibited by project safety gate.
+
+**No existing firmware files, device configuration, recovery tar, or `main` contents were modified by Steps 129–146.**
