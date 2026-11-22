@@ -96,7 +96,7 @@ The queue retain in the constructor at `0xa64a8` and the finalizer release at `0
 
 `dispatch_async_f` may fail to allocate its 12-byte work node (`calloc` at `0xa1980`) and return *without inserting a callback*, while outer `HTTPClientSendMessage` returns zero. That means native message and client retains taken before submission can remain without a dispatch callback and **without a safe known release signal**. The normal finalizer ordering cannot fix that path, because the stranded client reference may prevent finalization entirely. The same asynchronous-node allocation concern applies when attempting to enqueue client invalidation.
 
-**Conclusion:** no `altscreen.c` change is justified, no timeout or session-teardown ticket reclamation is safe, and no manual native CF release is authorized by this static analysis. Maintain the existing eight-slot capacity and callback-only tombstone reclamation, and leave the experiment disabled for normal firmware.
+**Conclusion:** no `altscreen.c` change is justified, no timeout or session-teardown ticket reclamation is safe, and no manual native CF release is authorized by this static analysis. Maintain the existing eight-slot capacity and callback-only tombstone reclamation, and leave the experiment disabled for normal firmware. [Step 137](STEP137_UNOBSERVABLE_DISPATCH_FAILURE.md) independently pins the dispatch allocation-drop branch and demonstrates with source-derived host negative controls why `http_send == 0` cannot authorize reclaim.
 
 ### Reproducibility
 
