@@ -1,6 +1,6 @@
 # Step 136 — HTTP-client CF finalizer at `0xa4b08`: queue-release control flow
 
-**Status:** read-only collection script and host verification added; full native disassembly is pending. **No firmware, `altscreen.c`, recovery image or device settings changed.**
+**Status:** the user-uploaded, verified-stock 1,108-line disassembly has been reviewed and archived. **The HTTPClient finalizer at `0xa4b08` definitely releases the queue reference held in `client+0x08`.** Runtime callback delivery, OOM handling and abnormal process teardown are not guaranteed. No firmware or recovery source changed.
 
 ## Why the finalizer address is now actionable
 
@@ -64,8 +64,46 @@ This confirms the original-stock SHA-256 check, the `HTTPClient` class name and 
 
 **Pending:** upload `~/Desktop/AK3918_step136_http_finalizer.txt` to analyze actual finalizer instructions and release ordering. Continue to preserve callback tombstones until a matching native callback; no runtime-source change, packaging or flashing is authorized.
 
+## Results from uploaded stock Step 136 report — completed
+
+The 1,108-line local report is preserved as [original native Step 136 evidence](../evidence/AK3918_step136_http_finalizer.txt). The user ran the stock SHA-256 and class-record guarded extractor; the printed class name was `b'HTTPClient'`, the on-disk 32-bit `CFRuntimeClass.finalize` slot at `0x134e9c` pointed to `0xa4b08`, and the complete target function has now been examined. This is a **function-body proof**, not merely a class-data prediction.
+
+### Finalizer control flow, exact native ARM evidence
+
+| ARM address | Stock behavior | Interpretation |
+| --- | --- | --- |
+| `0xa4b08..0xa4b10` | Preserve client in `r4`, load `[r0,#0x08]` | Retrieve client-owned queue pointer |
+| `0xa4b14..0xa4b18` | Check queue pointer; skip release if null | Conditional queue release |
+| **`0xa4b1c`** | **`bl 0xa04bc`** | **Release exactly one client-held dispatch-queue reference** |
+| `0xa4b20..0xa4b24` | Set `[client+0x08]=0` | Clear released queue pointer |
+| `0xa4b28..0xa4b3c` | If `client+0x18` nonnull, `free` then clear | Free secondary heap buffer |
+| `0xa4b40..0xa4b50` | If `client+0x47c` nonnull, call it with `client+0x474` | Invoke **optional external cleanup callback**, not the HTTP message completion callback |
+| `0xa4b54..0xa4b90` | Diagnose nonzero `client+0x48` state | Diagnostic branch, not queue flush |
+| `0xa4b94..0xa4bf0` | Check socket `client+0x44`; `close` when nonnegative; set `-1` | Close descriptor after queue release and optional cleanup callback |
+| `0xa4bf4..0xa4bf8` | Return | Finalizer ends without invoking `0xa4c18` or draining pending HTTP message list |
+
+The queue retain in the constructor at `0xa64a8` and the finalizer release at `0xa4b1c` are therefore **paired at the owner level** for this stock binary. The finalizer *releases the client's reference first*, before other heap cleanup, the `+0x47c` callback and socket close. Releasing a reference is **not an unconditional free**; whether the queue's own destructor runs at that point depends on the remaining queue refcount.
+
+### Accepted work, HTTP response callbacks and queue retirement are distinct
+
+- On a successful **node insertion**, the dispatch queue takes an active-work reference on empty→nonempty enqueue (`0xa19ec`; Step 133). Its serial worker invokes the work function at `0xa308c` and releases the active-work reference at `0xa30a4` **after the work callback**, independently of the client-owned queue reference.
+- The HTTP send path retains a **client** before attempting submission, then on normal dispatch executes `0xa6040` and balances that retained client at `0xa6070`. Thus if the work node is successfully inserted, the intended object lifetime prevents the client finalizer from running while that work callback still owns the client. This does **not** mean the later HTTP **message completion** callback has necessarily run; the send-dispatch function first moves the message into the client's pending list.
+- Enqueued client invalidation likewise retains the client and invokes the error/pending-message drain in `0xa4d7c` before releasing the client at `0xa4f48`. That is the **normal invalidation callback path**, not a global guarantee that an invalidation work node is inserted or completed.
+- `0xa4b08` has **no pending-message iteration and no direct `msg+0x904` completion call**. It cannot serve as an alternative completion signal for shim ticket reclamation.
+- The global queue retirement code at `0xa33b4..0xa342c` checks the global queue's refcount and may call the destructor. The queue destructor separately detects pending work and does not deliver callbacks (Step 132). No runtime/hardware validation proves all abnormal shutdown interleavings complete their work.
+
+### Failure mode still unresolved and unchanged
+
+`dispatch_async_f` may fail to allocate its 12-byte work node (`calloc` at `0xa1980`) and return *without inserting a callback*, while outer `HTTPClientSendMessage` returns zero. That means native message and client retains taken before submission can remain without a dispatch callback and **without a safe known release signal**. The normal finalizer ordering cannot fix that path, because the stranded client reference may prevent finalization entirely. The same asynchronous-node allocation concern applies when attempting to enqueue client invalidation.
+
+**Conclusion:** no `altscreen.c` change is justified, no timeout or session-teardown ticket reclamation is safe, and no manual native CF release is authorized by this static analysis. Maintain the existing eight-slot capacity and callback-only tombstone reclamation, and leave the experiment disabled for normal firmware.
+
+### Reproducibility
+
+`tests/test_step136_native_finalizer.py` checks the **exact uploaded native opcodes**, the queue release / cleanup ordering, the independence of the normal dispatch worker reference, the fact that the finalizer does not call `0xa4c18`, and the existing fail-closed shim cancellation logic. The archival and tests use no dongle and do not compile or package firmware.
+
 ## Tests and safety gate
 
 `tests/test_step136_finalizer_gate.py` pins the original uploaded class record, its on-disk finalizer candidate, absence of an observed slot relocation and the script's SHA-256/read-only contract. It verifies shell and embedded Python syntax, the ten native disassembly ranges and continuation of fail-closed callback tombstones in `altscreen.c`.
 
-**No runtime source change is justified by the class record alone.** The stock dispatcher can fail an internal allocation even if the HTTP sender reports zero. Neither timeout reclamation nor a blanket session teardown reset can be justified without callback/ownership proof. The combined stream-111 experiment remains disabled for normal builds and is not authorized for device flashing.
+**No runtime source change is justified by the confirmed finalizer or the class record alone.** The stock dispatcher can fail an internal allocation even if the HTTP sender reports zero. Neither timeout reclamation nor a blanket session teardown reset can be justified without callback/ownership proof. The combined stream-111 experiment remains disabled for normal builds and is not authorized for device flashing.
