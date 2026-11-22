@@ -54,4 +54,4 @@ A future target-runtime assessment would need independent evidence for genuinely
 
 This is a simple **counterfactual model**, not an ARM runtime emulator, live semaphore test, or proof that no other signal exists. Existing Step 115/131/132/137 regression suites remain in force.
 
-**Next focus:** resume evaluation of combined stream-111 functionality and feature-flag isolation through source-only and known-good stock tests. Do not allocate additional work to invasive dispatcher acknowledgment hooks unless new evidence shows a separate, actionable defect.
+**Step 140 follow-up:** [source-derived 110/111 request-response and feature-flag compatibility checks](STEP140_STREAM111_SOURCE_COMPATIBILITY.md) have now been added. They exercise the unmodified C hook bodies with host CF/HTTP stubs and verify the extra screen-callsite hooks remain opt-in only. They do not validate car-side video transport or target runtime. No invasive dispatcher acknowledgment hooks are warranted without new, separately actionable evidence.
