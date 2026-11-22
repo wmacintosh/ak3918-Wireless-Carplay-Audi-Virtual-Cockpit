@@ -50,6 +50,27 @@ Output: `~/Desktop/AK3918_step135_cf_class_descriptor.txt`.
 
 **Evidence requested for the next review:** upload the new Step 135 file. The earlier Step 134 report would also help relate a callback candidate to its surrounding native code, but is not required to run Step 135.
 
+## Local Mac verification — user-reported PASS
+
+The user fast-forwarded `wip/ak3918-step115-callback-tombstones` from `da29d1c` to `e87d1f236a0a5a7b153328ad4f0c29e915b9139c` and ran:
+
+```bash
+bash scripts/step135_extract_cf_class_descriptor.sh
+```
+
+The exact terminal result was:
+
+```text
+PASS: exact ARM class registration instructions and 0x134e8c candidate
+PASS: Step 135 verified-stock read-only class record report at /Users/wademacintosh/Desktop/AK3918_step135_cf_class_descriptor.txt
+NOTE: candidate finalizer identity and release order require manual analysis.
+No executable, archive, device setting or recovery firmware changed.
+```
+
+This validates the script's exact-stock checksum and registration-address checks, and that it generated its report. The report's full class-record content **has not been attached to this conversation or archived in GitHub**. Neither finalizer identity nor queue destruction order can be inferred from the PASS messages alone.
+
+**Awaiting:** upload `AK3918_step135_cf_class_descriptor.txt` to inspect the candidate class record, relocations, and finalizer function. The earlier `AK3918_step134_client_finalizer.txt` is additional useful evidence if available.
+
 ## Validation and safety scope
 
 `tests/test_step135_class_descriptor.py` confirms the source-derived PC-relative address calculation, read-only mounts, pinned native callsite opcodes, ELF32 file-backed VMA extraction, and fail-closed handling of malformed ELF, wrong architecture, and NOBITS data. Existing CI continues checking source syntax, callback lifecycle, queue ownership, and experimental packaging vetoes.
