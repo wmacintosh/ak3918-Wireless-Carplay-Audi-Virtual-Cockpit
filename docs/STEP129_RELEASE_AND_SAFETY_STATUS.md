@@ -55,6 +55,10 @@ bash scripts/step129_validate_arm_matrix.sh
 
 A passing result validates compilation, ARM/soft-float identity, `libc.so.0`, `libSdH.so` SONAME, constructor, and exported hooks. It is **not an integration or device-runtime test**.
 
+## Step 130 session-switch gate (newer than the ARM matrix result)
+
+The experimental branch now includes [Step 130's old-session phone-command drain](STEP130_SESSION_REPLACEMENT_GATE.md). The previous four-mode ARM/uClibc matrix passed on commit `62d34c6` **before this C source change**. GitHub host syntax and source-derived concurrency tests check the updated code, but the local four-mode ARM matrix should be repeated for this newer revision before any controlled device evaluation. The native phone-command dispatcher can still hang; the new wait preserves lifetime at the cost of potentially blocking replacement if it does not return.
+
 ## Before any device installation
 
 1. Four ARM/uClibc combinations have passed the local source-only compiler/ELF matrix (user-reported). **Still required before device testing:** independently inspect final patched ELF, all applied hook callsites, import resolution and target-device ABI; the matrix does not patch the stock executable.
