@@ -70,6 +70,12 @@ jobs:
         run: |
           python3 tests/test_step131_http_return.py
           python3 -m py_compile scripts/step131_verify_http_return.py
+      - name: Step 132 queue destructor read-only audit script
+        run: |
+          python3 tests/test_step132_readonly.py
+          bash -n scripts/step132_extract_queue_cancellation.sh
+      - name: Step 132 accepted-request reconnect stress
+        run: python3 tests/run_step132_callback_reconnect.py
       - name: Report safety limitations
         if: always()
         run: |
