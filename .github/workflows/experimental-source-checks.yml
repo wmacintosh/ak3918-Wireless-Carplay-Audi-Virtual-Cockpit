@@ -107,6 +107,8 @@ jobs:
         run: python3 tests/test_step138_ack_contract.py
       - name: Step 139 stock SETUP wait baseline and callback-only tombstone preservation
         run: python3 tests/test_step139_stock_wait_baseline.py
+      - name: Step 140 real source 110/111 request-response compatibility and host fault paths
+        run: python3 tests/run_step140_stream111_contract.py
       - name: Report safety limitations
         if: always()
         run: |
