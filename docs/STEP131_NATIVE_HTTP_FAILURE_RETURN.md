@@ -19,12 +19,18 @@ The stock native `HTTPClientSendMessage` implementation starts at `0xA6974`.
 | `0xA6A00` | `b 0xA6A74` | Nonzero failure jumps to common return **before** retain or queue operations |
 | `0xA6A4C` | `bl 0x82C74` | `CFRetain(message)` |
 | `0xA6A54` | `bl 0x82C74` | `CFRetain(client)` |
-| `0xA6A6C` | `bl 0xA1900` | Enqueue message and callback `0xA6040` |
-| `0xA6A70` | `mov r5, #0` | Enqueued path forces successful return |
+| `0xA6A6C` | `bl 0xA1900` | Attempt asynchronous work-node insertion for callback `0xA6040`; internal allocation can fail without returning an error |
+| `0xA6A70` | `mov r5, #0` | After the dispatch attempt, the HTTP sender forces zero return regardless of node insertion success |
 | `0xA6A74` | `mov r0, r5` | The common return carries either preparation error or zero |
 | `0xA6A7C` | `pop {r4,r5,r6,r7,pc}` | Function exit |
 
-**Conclusion:** in this verified stock function, `http_send(client,msg) != 0` proves the message was not enqueued and its response callback cannot subsequently be invoked by this submission. There is no other shown return path. A return of zero establishes **enqueue**, not delivery or successful video negotiation. Retained objects on accepted requests still belong to the native queue's completion/error paths and must not be reclaimed by the shim early.
+**Conclusion:** in this verified stock function, `http_send(client,msg) != 0` proves the message was not enqueued and its response callback cannot subsequently be invoked by this submission. There is no other shown return path. A return of zero establishes **an attempted dispatch**, not necessarily a successful node insertion, callback delivery or video negotiation. Retained objects on accepted requests still belong to the native queue's completion/error paths and must not be reclaimed by the shim early.
+
+## Step 133 clarification — return zero can still fail to enqueue
+
+A later verified-stock disassembly ([Step 133](STEP133_QUEUE_OWNERSHIP_AND_FINAL_RELEASE.md)) includes the body of native `dispatch_async_f` at `0xa1900`. It allocates a 12-byte work node with `calloc(1,12)` at `0xa1980`. An allocation failure takes a diagnostic/return path at `0xa198c..0xa19c8` **without queueing a callback**. The enclosing `HTTPClientSendMessage` ignores any such internal failure (the dispatcher has no error return) and still sets `r5=0` at `0xa6a70`.
+
+Therefore, the Step 131 proof still justifies immediate reclaim only on **nonzero** preparation-error returns, before retain/dispatch. A zero return is **not sufficient proof of successful queue insertion**. The shim must continue retaining that ticket until a matching native callback, even if one never arrives. Step 131's source fix and 24-failure regression are unchanged; this is a documentation clarification backed by new static evidence.
 
 ## Source change
 
@@ -57,7 +63,7 @@ Output: `~/Desktop/AK3918_step131_http_return.txt`. The script checks the origin
 
 After fast-forwarding the WIP branch from `6d14d60` to commit `263596b5d1c0bdc401a06b09197dd0a4b8cf9032`, the user ran both read-only validation scripts on their Mac:
 
-- `bash scripts/step131_extract_http_return.sh` — **PASS**. The script confirmed that the verified stock ARM nonzero-return branch exits before both reference retains and queue insertion, and that the enqueued path forces a zero return. The report was saved to `~/Desktop/AK3918_step131_http_return.txt`.
+- `bash scripts/step131_extract_http_return.sh` — **PASS**. The script confirmed that the verified stock ARM nonzero-return branch exits before both reference retains and dispatch, and that an attempted dispatch forces a zero return. The report was saved to `~/Desktop/AK3918_step131_http_return.txt`.
 - `bash scripts/step129_validate_arm_matrix.sh` — **PASS** for all four configurations: combined/phone `0/0`, `0/1`, `1/0`, and `1/1`.
 - The terminal output explicitly reported no modifications to firmware, recovery binaries, or tar archives.
 - GitHub Actions [run 44977899396](https://github.com/wmacintosh/ak3918-Wireless-Carplay-Audi-Virtual-Cockpit/actions/runs/44977899396) passed the source-level tests at the same commit.
