@@ -109,6 +109,8 @@ jobs:
         run: python3 tests/test_step139_stock_wait_baseline.py
       - name: Step 140 real source 110/111 request-response compatibility and host fault paths
         run: python3 tests/run_step140_stream111_contract.py
+      - name: Step 140 exact opt-in screen hook isolation across C preprocessor modes
+        run: python3 tests/test_step140_feature_isolation.py
       - name: Report safety limitations
         if: always()
         run: |
