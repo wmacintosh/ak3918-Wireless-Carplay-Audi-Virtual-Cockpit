@@ -93,6 +93,10 @@ jobs:
           python3 tests/test_step135_class_descriptor.py
           bash -n scripts/step135_extract_cf_class_descriptor.sh
           python3 -m py_compile scripts/step135_decode_cf_descriptor.py
+      - name: Step 136 verified-stock CF finalizer candidate and read-only function audit
+        run: |
+          python3 tests/test_step136_finalizer_gate.py
+          bash -n scripts/step136_extract_http_finalizer.sh
       - name: Report safety limitations
         if: always()
         run: |
