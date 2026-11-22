@@ -16,9 +16,12 @@ ROOT = Path(__file__).resolve().parents[1]
 source = (ROOT / "altscreen.c").read_text()
 
 def section(start, end):
-    if source.count(start) != 1 or source.count(end) != 1:
+    if source.count(start) != 1:
         raise RuntimeError("Unexpected shim source layout: " + start)
-    return source.split(start, 1)[1].split(end, 1)[0]
+    remainder = source.split(start, 1)[1]
+    if end not in remainder:
+        raise RuntimeError("Missing end delimiter after " + start)
+    return remainder.split(end, 1)[0]
 
 helpers = "struct combo_build {" + section(
     "struct combo_build {", "/* END STEP128 SEND ADMISSION GATE */"
