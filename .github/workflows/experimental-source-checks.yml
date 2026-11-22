@@ -139,6 +139,11 @@ jobs:
           python3 -m py_compile scripts/step145_stock_recovery_inventory.py
           python3 tests/test_step145_stock_recovery_inventory.py
           python3 scripts/step145_stock_recovery_inventory.py
+      - name: Step 147 explicit user-requested experimental installer fail-closed host tests (NO FLASH)
+        run: |
+          bash -n scripts/step147_prepare_test_archive.sh
+          python3 -m py_compile scripts/step147_validate_experimental_package.py scripts/step147_flash_experimental.py
+          python3 tests/test_step147_experimental_installer.py
       - name: Report safety limitations
         if: always()
         run: |
