@@ -101,11 +101,17 @@ class AuditNegativeControls(unittest.TestCase):
             self.assertNotIn(forbidden,s)
 
     def test_no_synthetic_pass_for_invalid_original_stock(self):
+        import tempfile
         class FakeBuilder:
             pass
-        with self.assertRaisesRegex(ValueError,"not ELF32"):
-            audit.audit(Path("/nonexistent"),Path("/nonexistent"),
-                        Path("/nonexistent"),FakeBuilder())
+        with tempfile.TemporaryDirectory() as temp:
+            stock=Path(temp)/"stock"
+            patched=Path(temp)/"patched"
+            shim=Path(temp)/"shim"
+            for p in (stock,patched,shim):
+                p.write_bytes(b"not-an-ELF")
+            with self.assertRaisesRegex(ValueError,"not ELF32"):
+                audit.audit(stock,patched,shim,FakeBuilder())
 
 
 if __name__=="__main__":
