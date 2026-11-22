@@ -26,15 +26,15 @@ Step 132's uploaded and [archived ARM report](../evidence/AK3918_step132_queue_c
 
 These are **separate client, message and queue ownership layers**. The observed native client retains do not, by themselves, establish the queue object's lifetime/refcount rules. Nor does the queue's warning on destruction establish whether normal shutdown can produce a nonempty queue.
 
-## Step 133 questions still requiring native code
+## Step 133 ownership questions and resolution status
 
-1. What is created/retained by the queue helper `0xa32b0`, and what reference count does it initially own?
-2. Does `dispatch_async_f` at `0xa1900` retain the queue per pending node, or does the queue stay alive through its owning HTTP client and scheduling threads?
-3. Where is `client+0x08` released in the HTTP client's finalizer, and can that finalizer run while send/invalidate work is still pending?
-4. Does the last client reference get released strictly after queued send and invalidation callbacks finish, or can the queue's last reference be dropped while pending nodes remain?
-5. Can abnormal queue destruction orphan a retained HTTP message **without** invoking `msg+0x904`, and if so is there any observable lifecycle event suitable for a safe shim tracking cleanup?
+1. **Resolved:** `0xa32b0` retrieves a queue pointer from global dispatch state; the HTTP client explicitly retains it at `0xa64a8`.
+2. **Resolved for successfully inserted work:** `dispatch_async_f` retains the queue once on the empty-to-nonempty transition at `0xa19ec`, and the worker releases that reference at `0xa30a4` after the final callback. It does not acquire one reference per node.
+3. **Unresolved:** the precise HTTP-client CF finalizer's release of `client+0x08` has not been identified.
+4. **Partly resolved:** queued work's own reference prevents ordinary premature queue free until dispatch completion, but the full client/global shutdown sequence and exceptional failure behavior remain unverified.
+5. **Not safe to generalize:** allocation failure at `0xa1980` can prevent queue insertion with a zero HTTP send return; no mechanism has been proven to reclaim its native message/client retains or shim metadata safely. Callback delivery cannot be guaranteed in all failure states.
 
-The uploaded Step 133 report now resolves the queue retain/release mechanics described below, but **not** the HTTP-client finalizer, complete process shutdown sequence, or callback delivery across allocator failure and abnormal termination.
+The Step 133 report establishes normal queue retain/release mechanics, but **not** the HTTP-client finalizer, complete process shutdown sequence, or callback delivery across allocator failure and abnormal termination.
 
 ## Read-only report generation
 
