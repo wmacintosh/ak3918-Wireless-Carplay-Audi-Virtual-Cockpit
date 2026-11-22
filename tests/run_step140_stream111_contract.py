@@ -256,6 +256,9 @@ static int fake_pthread_detach(pthread_t thread) {(void)thread;return 0;}
 #define pthread_create fake_pthread_create
 #define pthread_detach fake_pthread_detach
 
+/* Production has this forward declaration before the send wrapper. */
+static void shim_screen_response(void *msg);
+
 {{ENSURE}}
 {{SEND}}
 {{RESPONSE}}
