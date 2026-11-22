@@ -295,11 +295,16 @@ static void combo_cancel_ticket_locked(uint64_t ticket) {
     }
 }
 
-/* Only reclaim records when this wrapper is certain native http_send was
- * NEVER invoked. A nonzero native return alone cannot guarantee there will
- * be no future callback; retain a canceled tombstone in that case. */
+/* Step 131 (verified stock SHA-256 b2e32b82...): reclaim only when
+ * native HTTPClientSendMessage NEVER enqueued this message. This includes
+ * wrapper preflight rejection and a nonzero native send result: 0xa69c0/0xa69c4
+ * branch to 0xa6a00/0xa6a74 before either 0xa6a4c CFRetain or 0xa6a6c
+ * dispatch_async_f; all enqueued returns set r5=0 at 0xa6a70.
+ * This reasoning is specific to the verified stock AK3918 ARM implementation.
+ * Do not reuse with an unverified firmware variant. */
 static void combo_forget_never_submitted_locked(uint64_t ticket) {
     if (!ticket) return;
+    combo_cancel_ticket_locked(ticket);
     for (int i = 0; i < COMBINED_REQUEST_LIMIT; ++i) {
         struct combo_request *r = &g_combo_request[i];
         if (r->in_use && r->ticket == ticket) {
@@ -413,10 +418,10 @@ static void combo_send_enter_locked(void) {
 
 static void combo_send_leave_locked(int rc, unsigned gen, uint64_t ticket) {
     if (rc != 0) {
-        /* Do NOT clear this slot merely because native http_send failed:
-         * until all native failure paths are proven non-enqueueing, a late
-         * response may still run the shim callback for this message. */
-        combo_cancel_ticket_locked(ticket);
+        /* Exact stock ARM 0xa6974: nonzero rc returns before CFRetain and
+         * dispatch_async_f, so this ticket cannot receive a native callback.
+         * Never reclaim an accepted (rc==0) request until its callback. */
+        combo_forget_never_submitted_locked(ticket);
         if (g_combo_inflight_generation == gen)
             g_combo_inflight_generation = 0;
     }
