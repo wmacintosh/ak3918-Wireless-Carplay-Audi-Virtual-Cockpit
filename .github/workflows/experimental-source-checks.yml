@@ -99,6 +99,10 @@ jobs:
           bash -n scripts/step136_extract_http_finalizer.sh
       - name: Step 136 archived stock HTTPClient finalizer queue release and callback ordering
         run: python3 tests/test_step136_native_finalizer.py
+      - name: Step 137 native dispatch allocation ambiguity evidence
+        run: python3 tests/test_step137_dispatch_ambiguity.py
+      - name: Step 137 source-derived rc==0 callback ambiguity and unsafe-reclaim negative controls
+        run: python3 tests/run_step137_accepted_send_ambiguity.py
       - name: Report safety limitations
         if: always()
         run: |
