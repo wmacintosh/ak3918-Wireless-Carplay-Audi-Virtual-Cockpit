@@ -1,5 +1,8 @@
 # Wireless CarPlay on the Audi Virtual Cockpit (AK3918AN)
 
+> **Experimental branch warning — 2026-11-21:** This branch contains a newer, **not device-validated** ARM/AK3918 port and separate combined stream-111 source changes. The author's historical success statement and downloadable installer below describe the **older archive on `main`**, not proof that this WIP revision is safe to flash. The legacy stock and recovery packages are unchanged. Do not package or install WIP firmware without a separate hardware/recovery review. See [Step 129 release and safety status](docs/STEP129_RELEASE_AND_SAFETY_STATUS.md).
+
+
 I ordered a dongle to try [OMKE’s wireless CarPlay mod](https://github.com/OMKE/wireless-carplay-virtual-cockpit) and ended up with the wrong one. His is a Suding AX1800M. Mine turned out to be an AK3918AN. I already had the LukaDev mod working over USB, so I used OMKE’s code to get the wireless dongle working with my car.
 
 The first builds kept dropping CarPlay. With the build in this repo, the MMI stayed connected and navigation showed up on the Virtual Cockpit. I’ve tested it on my own setup.
