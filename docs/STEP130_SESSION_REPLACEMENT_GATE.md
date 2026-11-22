@@ -62,6 +62,28 @@ It verifies that:
 This does not call vendor `session_send_command`, emulate a full AirPlay
 `SETUP`, or establish on-dongle safety.
 
+## Four-mode ARM/uClibc cross-build — local pass after Step 130
+
+The user ran `git pull --ff-only` to update the active WIP branch from
+`62d34c6` to `6d14d60`, then ran
+`bash scripts/step129_validate_arm_matrix.sh` on their Mac.
+
+Their terminal output reported **PASS** for all four configurations:
+
+| Combined stream 111 | Phone commands | ARM/uClibc result |
+| --- | --- | --- |
+| 0 | 0 | PASS |
+| 0 | 1 | PASS |
+| 1 | 0 | PASS |
+| 1 | 1 | PASS |
+
+The final output said that no binaries, recovery firmware or tar files were
+changed in the repository. This is **user-provided local test evidence for
+Step 130 source**, not an independent runtime test, proof of successful
+CarPlay negotiation, or verification of a flashable patched executable.
+GitHub Actions independently passed the source-level Step 130 tests for
+commit `6d14d60`.
+
 ## Outstanding HTTP transport/callback issues
 
 - Native `HTTPClientSendMessage` and response completion paths are statically
