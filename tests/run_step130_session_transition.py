@@ -26,7 +26,7 @@ prologue = prologue.replace(
     start_marker,
     "static unsigned shim_session_transition_under_test(void *session) {\n"
 )
-prologue += "    return generation;\n}\n"
+prologue += "    (void)session_changed;\n    return generation;\n}\n"
 for required in (
     "g_session_valid = 0;",
     "while (g_session_cmd_inflight > 0)",
