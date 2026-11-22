@@ -14,7 +14,7 @@ ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/"scripts"))
 from step141_readonly_firmware_preflight import (
     RECOVERY_NAME, RECOVERY_SHA256, STOCK_SHA256,
-    audit_recovery_archive, need as require
+    audit_recovery_archive, require
 )
 
 def recovery_policy(source):
