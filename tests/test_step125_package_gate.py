@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Ensure the combined-mode packaging opt-in cannot bypass the Step 125 block."""
+"""Ensure the historical package flag cannot create a combined-mode archive."""
 import os
 from pathlib import Path
 import subprocess
@@ -21,7 +21,7 @@ class CombinedPackageGate(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn('REFUSING combined stream-111 firmware packaging',
                       result.stderr + result.stdout)
-        self.assertIn('teardown/send race remains unresolved',
+        self.assertIn('Only the separate, explicitly',
                       result.stderr + result.stdout)
 
 
