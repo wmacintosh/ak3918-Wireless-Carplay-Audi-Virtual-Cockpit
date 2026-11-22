@@ -134,6 +134,11 @@ jobs:
           python3 -m py_compile scripts/step144_target_identity_readonly.py
           python3 tests/test_step144_target_identity_readonly.py
           python3 scripts/step144_target_identity_readonly.py
+      - name: Step 145 verified-stock application archive hardware marker inventory (no device access)
+        run: |
+          python3 -m py_compile scripts/step145_stock_recovery_inventory.py
+          python3 tests/test_step145_stock_recovery_inventory.py
+          python3 scripts/step145_stock_recovery_inventory.py
       - name: Report safety limitations
         if: always()
         run: |
