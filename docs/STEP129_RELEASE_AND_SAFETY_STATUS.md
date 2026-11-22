@@ -91,4 +91,10 @@ The existing `flash_ak.py --check-only` **still uploads archive chunks**, despit
 
 Static import coverage cannot prove correct **target** loader/linker resolution, exact installed uClibc symbols, or runtime safety. Experimental packaging and flashing remain blocked.
 
-**No existing firmware files, device configuration, recovery tar, or `main` contents were modified by Steps 129–143.**
+## Step 144 — Explicit read-only live device fingerprint (awaiting Mac run)
+
+[Step 144](STEP144_TARGET_IDENTITY_AND_RECOVERY_EVIDENCE.md) adds a **single GET, explicit-opt-in** collector for the known stock Suding `/cgi-bin/getversion.cgi` endpoint at `192.168.200.1`; it refuses redirects, unknown devices and oversized responses and redacts non-allowlisted fields. The default invocation makes **no network requests**, and GitHub CI only tests mocked HTTP responses. No authenticated shell, firmware CGI upload, command injection, reboot, filesystem reads or persistent target-side action is performed.
+
+Even a successful target identity GET **cannot** establish the installed `libc.so.0` / `ld-uClibc.so.0` hashes or a verified board-specific unbrick mechanism. Research on different AK3918-based adapters is not evidence for this specific unit's recovery layout. Experimental packaging/flashing remains blocked.
+
+**No existing firmware files, device configuration, recovery tar, or `main` contents were modified by Steps 129–144.**
