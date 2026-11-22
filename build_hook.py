@@ -20,6 +20,7 @@ FINALIZER_CLASSNAME_VA = 0x001028B4
 # Explicit experimental opt-in. In normal mode NO outgoing screen SETUP is
 # modified, and the detached cluster HTTP path has been removed from the C shim.
 ENABLE_COMBINED_CLUSTER = os.environ.get("AK_ENABLE_COMBINED_CLUSTER") == "1"
+ENABLE_PHONE_CMDS = os.environ.get("AK_ENABLE_PHONE_CMDS") == "1"
 STREAM_HOOK_BL_VA = 0x0002FADC
 STREAM_HOOK_OLD_BL = 0xEB018DE6  # stock BL 0x9327C
 SEND_HOOK_BL_VA = 0x0002FBB0
@@ -79,6 +80,7 @@ def build_shim(out):
     subprocess.run(command + [
         "-mcpu=arm926ej-s", "-mfloat-abi=soft", "-shared", "-fPIC", "-Os",
         "-DAK_ENABLE_COMBINED_CLUSTER=" + ("1" if ENABLE_COMBINED_CLUSTER else "0"),
+        "-DAK_ENABLE_PHONE_CMDS=" + ("1" if ENABLE_PHONE_CMDS else "0"),
         "-fno-unwind-tables", "-fno-asynchronous-unwind-tables",
         "-Wl,-soname," + SHIM_SO,
         "-o", out, SHIM_C, "-lpthread",
