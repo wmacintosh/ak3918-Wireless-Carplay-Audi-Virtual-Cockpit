@@ -168,7 +168,7 @@ with tempfile.TemporaryDirectory(prefix='ak3918-step120-') as tmp:
     file.write_text(code)
     for mode in ('address,undefined','undefined','none'):
         exe=Path(tmp)/('test_'+mode.replace(',','_'))
-        cmd=['cc','-std=gnu11','-O1','-g','-Wall','-Wextra','-Werror','-fno-omit-frame-pointer','-pthread']
+        cmd=['cc','-std=gnu11','-O1','-g','-Wall','-Wextra','-Werror','-Wno-unused-function','-fno-omit-frame-pointer','-pthread']
         if mode != 'none':
             cmd += ['-fsanitize='+mode]
         subprocess.run(cmd + [str(file),'-o',str(exe)],check=True)
