@@ -89,11 +89,7 @@ commit `6d14d60`.
 - Native `HTTPClientSendMessage` and response completion paths are statically
   understood enough for the Step 128 enqueue admission gate. Late response
   wrappers still **always delegate to the stock callback**.
-- A nonzero return from `http_send` is conservatively assumed to possibly
-  have enqueued work. Its canceled request record remains reserved until
-  callback or explicit, proven no-enqueue evidence. With eight slots, repeated
-  opaque failures can permanently disable combined mode for that process.
-  This is intentional fail-closed behavior, not fixed by Step 130.
+- **Later Step 131 update:** Verified stock `HTTPClientSendMessage` error paths prove a nonzero result bypasses both reference retains and native enqueue. Step 131 now reclaims these never-submitted tickets. This was not part of the Step 130 implementation; accepted submissions that never deliver a callback still retain tracking tombstones. See [Step 131](STEP131_NATIVE_HTTP_FAILURE_RETURN.md).
 - The present tests do not reproduce every possible simultaneous session
   setup, native HTTP cancellation, socket interruption, or vehicle reconnect.
   Those require additional evidence and controlled device observation.
