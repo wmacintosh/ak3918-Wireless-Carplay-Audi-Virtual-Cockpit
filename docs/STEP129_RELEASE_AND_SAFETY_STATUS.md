@@ -62,7 +62,7 @@ The experimental branch includes [Step 130's old-session phone-command drain](ST
 ## Before any device installation
 
 1. Four ARM/uClibc combinations have passed the local source-only compiler/ELF matrix (user-reported). **Still required before device testing:** independently inspect final patched ELF, all applied hook callsites, import resolution and target-device ABI; the matrix does not patch the stock executable.
-2. Review queue error paths and verify that a nonzero return cannot enqueue a callback before deciding to reclaim its ticket.
+2. **Completed in Step 131:** verified-stock ARM nonzero return bypasses enqueue and both retains; its ticket is reclaimed. Local exact-opcode verification and all four ARM/uClibc configurations passed at `263596b`. **Still unresolved:** safely handling successfully enqueued requests whose completion callback never arrives; no timeout-based ticket reclaim is authorized.
 3. Extend host testing to true native session setup/callback sequences (including nested reentrancy and reconnects), then collect actual device logs with the untouched stock recovery package confirmed.
 4. Reconcile the **public `main` README** separately before promoting experimental content into a release; it currently describes a historical tested package, not this branch.
 5. Do not flash the Step 128/129 experiment solely because these source checks pass.
