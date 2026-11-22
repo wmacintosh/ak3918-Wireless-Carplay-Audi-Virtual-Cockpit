@@ -1,0 +1,26 @@
+Provenance: GitHub Actions run 44992232144 on branch wip/ak3918-step115-callback-tombstones
+Source: read-only scripts/step145_stock_recovery_inventory.py using SHA-pinned stock_ak_202610081659.tar
+No physical device contacted, no firmware modified.
+
+STEP 145 OFFLINE VERIFIED-STOCK HARDWARE/RECOVERY MARKER INVENTORY
+NO DEVICE, NETWORK, FIRMWARE BUILD, PACKAGE, FLASH OR TAR EXTRACTION
+PASS: original historical tar and all five member hashes verified
+ARCHIVE=stock_ak_202610081659.tar
+ARCHIVE_SHA256=a4ee31452833cc38cf4a3839adaa75b9b34fd0a9d2ed006e0c9b34ae7539dba3
+PACKAGE_SCOPE=five application/vendor ELF files only
+PACKAGE_NOT_PRESENT=full rootfs, kernel, bootloader, board DTB, system libc, target ld-uClibc
+MEMBER libSdAuto.so bytes=71576 sha256=3f44ce2a8f7f81b585fce426747354d59a3f0e71877b638173f542456da2be6b
+  EMBEDDED_STRING_MARKER_COUNTS: Suding branding=1
+MEMBER libSdCommon.so bytes=88780 sha256=36480881ba077fbafa7d1f79767f7f6df8072cb78f7cd009c59c4af4f20722b4
+  EMBEDDED_STRING_MARKER_COUNTS: Suding branding=14; MTD proc node=1; MTD char node=1
+MEMBER libSdSampleRate.so bytes=42308 sha256=6e1cfdf3a91fdee5bf0a126c122c06ea84fcf1fb4741986b02f47f9ea0de7e14
+  EMBEDDED_STRING_MARKER_COUNTS: (none in allowlist)
+MEMBER libSdUtils.so bytes=141516 sha256=6872f533caad8e59d5fdbc3f48e4ef14e315479710f2378b9dea01383fbf876a
+  EMBEDDED_STRING_MARKER_COUNTS: Recovery term=1
+MEMBER sdDongle bytes=1158284 sha256=b2e32b82a37667500ca4f1c8266604bf28cc923ac94343907eb68c843d92e0a1
+  EMBEDDED_STRING_MARKER_COUNTS: Suding branding=37; Yunlian alias=1; Loader path=1
+NOTE: embedded-string mentions are NOT verified PCB identifiers, bootloader access, or runtime libraries
+NOTE: this archive has NO bootloader image or board-specific fullflash recovery payload
+UNKNOWN: exact live flash chip, UART pads, bootloader procedure and on-device libc/loader
+BLOCKED FOR FLASH: out-of-band unbrick and target loader remain unverified
+PASS: STEP145 OFFLINE ARCHIVE-SCOPE INVENTORY
