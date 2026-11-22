@@ -232,6 +232,10 @@ int main(void) {
     g_test_result = -19;
     pthread_mutex_unlock(&g_test_lock);
     for (int j = 0; j < COMBINED_REQUEST_LIMIT * 3; ++j) {
+        /* Model the stock native caller creating each new HTTP message. A
+         * previous failed submission left the shim callback in this reused
+         * fixture buffer; a newly created message starts with stock callback. */
+        install_stock_callback(msg3);
         set_build(msg3, 600, 9999 + (uint64_t)j);
         CHECK(shim_screen_http_send((void *)(uintptr_t)0x9000, msg3) == -19);
         CHECK(g_combo_send_inflight == 0);
