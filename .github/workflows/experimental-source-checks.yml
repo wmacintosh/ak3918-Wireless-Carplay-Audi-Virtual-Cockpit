@@ -64,6 +64,8 @@ jobs:
           bash -n scripts/step129_validate_arm_matrix.sh
           grep -q 'combined in 0 1' scripts/step129_validate_arm_matrix.sh
           grep -q 'phone in 0 1' scripts/step129_validate_arm_matrix.sh
+      - name: Step 130 session switch drains old phone-command users
+        run: python3 tests/run_step130_session_transition.py
       - name: Report safety limitations
         if: always()
         run: |
