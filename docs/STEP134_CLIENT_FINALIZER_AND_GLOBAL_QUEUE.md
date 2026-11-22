@@ -1,6 +1,6 @@
 # Step 134 — HTTP client CF finalizer and global queue shutdown
 
-**Status:** evidence collection prepared, awaiting the user's verified-stock disassembly report. No change to runtime firmware, `altscreen.c`, packaging, recovery or `main`.
+**Status:** Step 134 local extraction passed; although its full report remains unattached, subsequent [Steps 135–136](STEP136_HTTP_FINALIZER_CONTROL_FLOW.md) identified and disassembled the `HTTPClient` finalizer, confirming release of `client+0x08` at `0xa4b1c`. No change to runtime firmware, packaging, recovery or `main`.
 
 ## Question
 
@@ -79,4 +79,4 @@ This establishes that the checksum-gated read-only script completed and produced
 
 **Do not** reclaim tracking records from `http_send == 0` based on elapsed time, HTTP client invalidation, queue release, CF finalization or global queue shutdown. A native callback can still arrive, and an unsuccessful allocation may never schedule one. The experimental stream-111 feature is unvalidated on the dongle and remains disabled for normal builds.
 
-**Next gate after the report:** locate the actual HTTP CF class registration/finalizer function pointer and confirm where the class finalizer releases `client+0x08`; compare this with the global-queue retirement condition and queued-work reference. If the evidence cannot show a safe completion barrier, the existing fail-closed policy remains intact.
+**Resolution through later verified evidence:** [Step 135](STEP135_CF_CLASS_DESCRIPTOR_GATE.md) decoded the `HTTPClient` `CFRuntimeClass` finalizer slot, and [Step 136](STEP136_HTTP_FINALIZER_CONTROL_FLOW.md) proved that `0xa4b08` calls `dispatch_release(client+0x08)` at `0xa4b1c`. Successful queued work retains the queue independently until its dispatch callback finishes; the finalizer does **not** itself drain HTTP messages, and allocator failures or abnormal process shutdown can still lose callbacks. No safe generic callback-reclaim barrier exists.
