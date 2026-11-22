@@ -9,7 +9,7 @@ All addresses below are verified directly against the SHA-256–matched stock AR
 
 ## 1. Where the native queue releases both `http_send` references (`0xa6974`)
 
-In `HTTPClientSendMessage` (`0xa6974`), `0xa6a4c` retains `msg` (`CFRetain`, `0x82c74`) and `0xa6a54` retains `client` (`CFRetain`, `0x82c74`), stores `client` at `msg+0x8ec` (`0xa6a5c`), and enqueues `0xa6040(msg)` onto `client->queue` via `dispatch_async_f` (`0xa1900` at `0xa6a6c`).
+In `HTTPClientSendMessage` (`0xa6974`), `0xa6a4c` retains `msg` (`CFRetain`, `0x82c74`) and `0xa6a54` retains `client` (`CFRetain`, `0x82c74`), stores `client` at `msg+0x8ec` (`0xa6a5c`), and **attempts to enqueue** `0xa6040(msg)` onto `client->queue` via `dispatch_async_f` (`0xa1900` at `0xa6a6c`).
 
 Disassembly confirms both retains are cleanly balanced:
 
@@ -30,7 +30,7 @@ Disassembly confirms both retains are cleanly balanced:
    - `HTTPClientInvalidate` (`0xa6584`) retains `client` (`0xa658c`) and enqueues `_HTTPClientInvalidate` (`0xa4f30`) onto the same serial `client->queue` (`0xa65a4 → 0xa1900`).
    - `0xa4f30` calls `_HTTPClientErrorHandler(client, -6723)` (`0xa4d7c`, `kCanceledErr`), which drains every remaining `msg` on `client+0x49c` via `0xa4c18` (`0xa4eac..0xa4ec4`, invoking `msg+0x904` and releasing `msg`), then releases `client` at `0xa4f48`.
 5. **Non-blocking enqueue confirmation**:
-   - `HTTPClientSendMessage` (`0xa6974`) is strictly enqueue-only: it never invokes `0xa6040` or `msg+0x904` synchronously on the caller's stack.
+   - `HTTPClientSendMessage` (`0xa6974`) is a nonblocking **attempted enqueue**: it never invokes `0xa6040` or `msg+0x904` synchronously on the caller's stack. **Step 133** proves the async dispatcher can fail to allocate a work node and return without inserting one, while the HTTP sender still returns zero; see [Step 133](STEP133_QUEUE_OWNERSHIP_AND_FINAL_RELEASE.md).
    - The indirect notifier at `0xa1a3c` in `0xa1900` runs only when `queue == dispatch_get_main_queue()` (`0xa1a04..0xa1a0c`).
 
 ---
@@ -62,7 +62,7 @@ Therefore, when `shim_screen_ensure_stream` replaces `*streams` with a newly cre
 
 ## 4. Step 128 send-admission gate (`g_combo_send_inflight`)
 
-Because `0xa6974` is non-blocking enqueue-only and never acquires `g_state_lock` or invokes `shim_screen_response` synchronously:
+Because `0xa6974` is a nonblocking dispatch attempt that never acquires `g_state_lock` or invokes `shim_screen_response` synchronously, regardless of queue-node allocation success:
 
 - `shim_screen_http_send` increments `g_combo_send_inflight` (`combo_send_enter_locked`) under `g_state_lock` when `decision == 1`, releases `g_state_lock`, invokes `http_send(client, msg)`, and then calls `combo_send_leave_locked` under `g_state_lock` (canceling the ticket on `rc != 0` and broadcasting `g_session_cv` when `g_combo_send_inflight` hits `0`).
 - `shim_session_teardown` and generation transitions in `shim_session_setup` invalidate `g_session_valid` / cancel builds & requests first, then wait on `g_session_cv` until `g_combo_send_inflight == 0` (`combo_wait_sends_drained_locked`).
