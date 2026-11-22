@@ -157,9 +157,14 @@ static void set_build(void *msg, unsigned gen, uint64_t conn) {
     pthread_mutex_unlock(&g_state_lock);
 }
 int main(void) {
-    char *msg1 = calloc(1, 0x920), *msg2 = calloc(1, 0x920);
-    char *msg3 = calloc(1, 0x920), *msg4 = calloc(1, 0x920);
-    CHECK(msg1 && msg2 && msg3 && msg4);
+    /* Stock ARM is 32-bit: callback field +0x904 is 4-byte aligned.
+     * On this 64-bit host, add 4 bytes to allocation base so +0x904 is
+     * 8-byte aligned as required for the host void * with UBSan enabled. */
+    char *raw1 = calloc(1, 0x930), *raw2 = calloc(1, 0x930);
+    char *raw3 = calloc(1, 0x930), *raw4 = calloc(1, 0x930);
+    CHECK(raw1 && raw2 && raw3 && raw4);
+    char *msg1 = raw1 + 4, *msg2 = raw2 + 4;
+    char *msg3 = raw3 + 4, *msg4 = raw4 + 4;
     install_stock_callback(msg1);
     install_stock_callback(msg2);
     install_stock_callback(msg3);
@@ -256,7 +261,7 @@ int main(void) {
     CHECK(callback_before == callback_after);
     CHECK(g_combo_send_inflight == 0);
 
-    free(msg1); free(msg2); free(msg3); free(msg4);
+    free(raw1); free(raw2); free(raw3); free(raw4);
     puts("PASS Step 129 integrated real wrapper+teardown; no-client reclaim,"
          " late callback, uncertain-error tombstone and stock isolation");
     return 0;
