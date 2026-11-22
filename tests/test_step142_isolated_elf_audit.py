@@ -70,10 +70,14 @@ class AuditNegativeControls(unittest.TestCase):
         self.assertIn('if build_hook.package_plan() is not None:',s)
         self.assertIn("python3 /repo/scripts/step142_audit_patched_elf.py",s)
         self.assertIn('cp "$RESULT" "$REPORT"',s)
+        # Comments may explicitly name forbidden functions to explain why
+        # we refuse them. Require absence of execution on noncomment lines.
+        executable = "\n".join(line for line in s.splitlines()
+                               if not line.lstrip().startswith("#"))
         for forbidden in ("make_tar(", "builder.main(", "build_hook.main(",
                           "flash_ak.py", "submition.cgi", "reboot.cgi",
                           "post_chunk(", "docker cp ", "--network host"):
-            self.assertNotIn(forbidden,s)
+            self.assertNotIn(forbidden,executable)
         # The host repository is mounted read-only, compiled ELF never leaves
         # the ephemeral container; only terminal text is reported.
         self.assertNotRegex(s,r"\-v\s+[^\n]*:(?:/work|/tmp/ak3918-step142-disposable):rw")
