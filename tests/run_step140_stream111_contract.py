@@ -271,12 +271,15 @@ static char *make_msg(char **raw) {
     CHECK(((uintptr_t)(msg+0x904)%sizeof(void*))==0);
     void *callback=(void *)STOCK_SCREEN_RESPONSE_VA;
     memcpy(msg+0x904,&callback,sizeof callback);
-    int *len=(int *)(msg+0x4a0);
-    *len=1;
+    /* Stock ARM has a 4-byte pointer at 0x49c and 4-byte len at 0x4a0.
+     * On a 64-bit host, a pointer read at 0x49c overlaps the next word.
+     * The CF stub below intentionally NEVER dereferences body; use an opaque
+     * nonnull pointer token whose high 32 bits encode native length=1.
+     * This is a strict host ABI test limit, not a real data buffer. */
+    CHECK(sizeof(void*)==8);
     char **body=(char **)(msg+0x49c);
-    static char response_byte=1;
-    /* Host pointer at +0x49c also becomes aligned after +4. */
-    *body=&response_byte;
+    *body=(char *)(uintptr_t)UINT64_C(0x0000000100000001);
+    CHECK(*(int *)(msg+0x4a0)==1);
     return msg;
 }
 static void set_callback(char *msg) {
