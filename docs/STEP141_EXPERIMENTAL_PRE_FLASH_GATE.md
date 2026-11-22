@@ -39,6 +39,41 @@ The command **does not compile, patch, package, send, install or flash** anythin
 
 The report printed to `~/Desktop/AK3918_step141_readonly_preflight.txt` can be uploaded for the next review. If the preflight ends `FAIL CLOSED`, the direct pipeline's exit status can be hidden by `tee`. In an interactive bash shell, use `set -o pipefail` before running the command, or inspect the last report line and do not proceed unless the script explicitly prints `PASS: STEP141 OFFLINE STATIC PREFLIGHT`.
 
+## Resolution: missing `extracted/sdDongle` on fresh `git pull`
+
+The user's first Step 141 local run passed Git branch and both feature-flag checks, then failed closed at:
+
+```text
+FAIL CLOSED: builder input extracted/sdDongle is missing; do not use modified/sdDongle
+```
+
+This is a **missing local build-input staging step**, not a detected ARM mismatch. GitHub tracks the historical `stock_ak_202610081659.tar` but not the unpacked `extracted/` directory. Git cannot restore untracked extracted files through `git pull`.
+
+To resolve that without copying a patched image, run the explicit, safe local staging helper:
+
+```bash
+cd "$HOME/AK3918_GitHub"
+git pull --ff-only
+python3 scripts/step141_stage_verified_stock_inputs.py
+```
+
+The helper first validates the complete recovery tar's SHA-256 against the pinned historical digest and checks each of the five named original members. It refuses a recovery tar whose `sdDongle` does not match the original pinned stock ELF digest, verifies all members **before writing**, and refuses to overwrite an existing `extracted/` input that differs. It extracts **only** the five expected regular files, without executing firmware, recursively extracting arbitrary paths, or changing the recovery archive. It may create the local `extracted/` directory and missing members. Unlike the preflight, **this helper intentionally writes these verified local inputs**.
+
+Then re-run the unchanged read-only preflight:
+
+```bash
+set -o pipefail
+AK_ENABLE_COMBINED_CLUSTER=1 \
+AK_ENABLE_PHONE_CMDS=1 \
+AK_STEP128_ALLOW_TEST_PACKAGE=1 \
+python3 scripts/step141_readonly_firmware_preflight.py \
+  | tee "$HOME/Desktop/AK3918_step141_readonly_preflight.txt"
+```
+
+The recovery tar is available in the GitHub checkout, but **its internal `sdDongle` is not assumed to match until the explicit SHA/member check passes**. A mismatch is a real blocker: do not substitute `modified/sdDongle`, overwrite a conflicting local input or rename a test package to bypass the source-integrity gate.
+
+The additional `tests/test_step141_stock_input_staging.py` exercises synthetic archive staging/no-overwrite cases and independently checks the tracked real recovery tar's original stock ELF digest in GitHub CI. Still no firmware build or flashing.
+
 ## Host CI
 
 `tests/test_step141_readonly_firmware_preflight.py` checks flag acceptance/rejection, exact hardcoded stock ARM opcodes, in-memory-only patch-placement inspection, synthetic safe and malicious tar members, mismatch rejection, and absence of firmware upload or write operations. These tests use fake data; they cannot verify the developer's local `extracted/` inputs, the genuine recovery binary or the live Wi-Fi device.
