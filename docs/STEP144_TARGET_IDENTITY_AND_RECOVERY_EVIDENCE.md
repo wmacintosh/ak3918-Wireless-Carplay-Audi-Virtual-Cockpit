@@ -1,6 +1,21 @@
 # Step 144 — Device-specific read-only fingerprint and recovery evidence boundary
 
-**Status:** explicitly opt-in live GET collector and hermetic host tests prepared; **no live dongle request yet**. The target library files, UART console and out-of-band hardware recovery method remain unknown. **Do not package or flash the combined stream-111 experiment.**
+**Status: actual Mac/device identity probe PASSED** (user-pasted terminal output). The target library files, UART console and out-of-band hardware recovery method remain unknown. **Do not package or flash the combined stream-111 experiment.**
+
+## Actual Step 144 result — observed on the physical dongle
+
+The user connected to their dongle's SmartBox Wi-Fi and ran `scripts/step144_target_identity_readonly.py --probe-version` at WIP commit `f72a8b8f3576`. The reported probe called the single allowlisted GET endpoint and returned `PASS: STEP144 READ-ONLY HTTP DEVICE IDENTITY`. The user-pasted [relevant terminal lines are archived](../evidence/AK3918_step144_device_identity_user_terminal.txt).
+
+| Returned field | Value |
+| --- | --- |
+| `platform` | `AK3918AN` |
+| `custom` | `suding` |
+| `system_version` | `20260411104900CA` |
+| `protocol_version` | `20261008165915` |
+
+**Important:** The earlier README calls `20261008165915` a CarPlay firmware version. The actual device reports that string as **`protocol_version`**, whereas **`system_version` differs**. These are not interchangeable and the response alone does **not** establish binary equality with the original `stock_ak_202610081659.tar` archive, nor proof that the installed root filesystem matches the Buildroot libc used for development. The difference is not by itself evidence of corruption or incompatibility; the field semantics require separate device-specific evidence.
+
+This probe validates device platform/vendor identity and confirms its ordinary version CGI can respond. It provides **no physical recovery guarantee** if CGI becomes unavailable, and cannot read or hash installed `/lib/libc.so.0` or `/lib/ld-uClibc.so.0`. These remain hard open gates for flashing combined stream 111.
 
 ## Established before this step
 
@@ -55,6 +70,6 @@ For the next independent-recovery investigation, preserve non-invasive evidence:
 
 ## Gate after Step 144
 
-The current investigation can confirm an AK3918AN/Suding **identity** over a benign GET, but **must not claim real runtime loader compatibility** without exact installed library files or a read-only shell/image, and **must not claim unbrick support** without verified board-specific bootloader or recovery evidence. The WIP stream-111 build remains unapproved for deployment.
+The actual Step 144 run confirmed AK3918AN/Suding **identity** over a benign GET, but **must not claim real runtime loader compatibility** without exact installed library files or a read-only shell/image, and **must not claim unbrick support** without verified board-specific bootloader or recovery evidence. The WIP stream-111 build remains unapproved for deployment.
 
 **No change to `altscreen.c`, `build_hook.py`, `flash_ak.py`, original firmware, stock recovery or `main`.**
