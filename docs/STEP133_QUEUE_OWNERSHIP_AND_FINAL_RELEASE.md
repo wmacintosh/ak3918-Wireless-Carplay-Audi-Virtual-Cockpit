@@ -66,6 +66,19 @@ Expected output: `~/Desktop/AK3918_step133_queue_ownership.txt`.
 
 The script does not modify firmware, generate a test archive, or operate on the dongle. Upload the resulting report for line-by-line ownership analysis.
 
+## Local extraction — user-reported PASS
+
+The user fast-forwarded the experimental branch from `02b7a0e` to `fc0a933a5792` and ran `bash scripts/step133_extract_queue_ownership.sh` on their Mac. The terminal output reports:
+
+```text
+PASS: verified-stock queue constructor/assignment/send callsites captured
+NOTE: queue lifetime and destruction ordering still require analysis
+PASS: Step 133 read-only queue ownership report at /Users/wademacintosh/Desktop/AK3918_step133_queue_ownership.txt
+No executable, archive, device setting or recovery firmware changed.
+```
+
+This confirms the script's stock-SHA and expected opcode/checkpoint gates passed and its report was produced. **The report's full disassembly has not been uploaded or independently reviewed yet**. Therefore queue reference-count semantics, client finalizer ordering, and delivery of callbacks after abnormal shutdown remain unresolved. Do not equate the extractor's PASS with a safe callback cleanup or device-runtime validation.
+
 ## Safety gate and next action
 
 - The host test `tests/test_step133_queue_ownership.py` checks read-only mounts, syntax, required extraction regions, SHA-256 gate and exact native instruction identities. It also validates that the report verifier rejects missing/changed critical addresses and that accepted-request tombstones remain preserved.
