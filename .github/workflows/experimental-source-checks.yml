@@ -124,6 +124,11 @@ jobs:
           bash -n scripts/step142_isolated_elf_audit.sh
           python3 -m py_compile scripts/step142_audit_patched_elf.py
           python3 tests/test_step142_isolated_elf_audit.py
+      - name: Step 143 offline recovery path and ARM dynamic symbol-provider parser regressions
+        run: |
+          bash -n scripts/step143_isolated_loader_audit.sh
+          python3 -m py_compile scripts/step143_audit_loader_symbols.py scripts/step143_recovery_readiness.py
+          python3 tests/test_step143_loader_recovery.py
       - name: Report safety limitations
         if: always()
         run: |
