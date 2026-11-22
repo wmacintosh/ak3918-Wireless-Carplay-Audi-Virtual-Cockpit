@@ -74,6 +74,27 @@ The recovery tar is available in the GitHub checkout, but **its internal `sdDong
 
 The additional `tests/test_step141_stock_input_staging.py` exercises synthetic archive staging/no-overwrite cases and independently checks the tracked real recovery tar's original stock ELF digest in GitHub CI. Still no firmware build or flashing.
 
+## Local Mac result — verified preflight PASS (user-reported)
+
+On the experimental branch at `3273d0057bba`, the user reran the exact Step 141 command with `AK_ENABLE_COMBINED_CLUSTER=1`, `AK_ENABLE_PHONE_CMDS=1` and `AK_STEP128_ALLOW_TEST_PACKAGE=1`. The terminal output confirmed:
+
+```text
+PASS: exact original ARM stock SHA256 and patch-input invariants
+PASS: in-memory mapped zero-gap candidate VA=0x102e74 file=0xf2e74 bytes=30
+PASS: in-memory mapped zero-gap candidate VA=0x102e94 file=0xf2e94 bytes=12
+PASS: in-memory mapped zero-gap candidate VA=0x102ea0 file=0xf2ea0 bytes=12
+PASS: in-memory mapped zero-gap candidate VA=0x102eac file=0xf2eac bytes=12
+PASS: historical recovery archive hash, file names and member safety
+PASS: all five builder inputs equal original recovery archive members
+PASS: historical installer is for stock/legacy tar ONLY, not this experiment
+INFO: AK_UCLIBC_CC unset on host; builder requires ARM/uClibc compiler
+PASS: STEP141 OFFLINE STATIC PREFLIGHT
+```
+
+This resolves the previously missing original `extracted/sdDongle` input and confirms all **static** Step 141 checks completed. The report is currently grounded in user-pasted terminal output, not an independently retrieved Desktop file. The absent `AK_UCLIBC_CC` is informational in this script; the known Docker Buildroot/uClibc cross-compiler can be selected inside an isolated container.
+
+**Next: Step 142 isolated patched-ELF build/inspection.** No preflight result proves the final loader, runtime or recovery safety. The experimental firmware remains unapproved for flashing.
+
 ## Host CI
 
 `tests/test_step141_readonly_firmware_preflight.py` checks flag acceptance/rejection, exact hardcoded stock ARM opcodes, in-memory-only patch-placement inspection, synthetic safe and malicious tar members, mismatch rejection, and absence of firmware upload or write operations. These tests use fake data; they cannot verify the developer's local `extracted/` inputs, the genuine recovery binary or the live Wi-Fi device.
