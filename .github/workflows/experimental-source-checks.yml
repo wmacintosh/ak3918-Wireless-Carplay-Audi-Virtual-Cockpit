@@ -66,6 +66,10 @@ jobs:
           grep -q 'phone in 0 1' scripts/step129_validate_arm_matrix.sh
       - name: Step 130 session switch drains old phone-command users
         run: python3 tests/run_step130_session_transition.py
+      - name: Step 131 verified-stock native HTTP failure path
+        run: |
+          python3 tests/test_step131_http_return.py
+          python3 -m py_compile scripts/step131_verify_http_return.py
       - name: Report safety limitations
         if: always()
         run: |
