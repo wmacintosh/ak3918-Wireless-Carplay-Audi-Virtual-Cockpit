@@ -78,6 +78,10 @@ jobs:
         run: python3 tests/run_step132_callback_reconnect.py
       - name: Step 132 pinned native queue destruction and callback control-flow evidence
         run: python3 tests/test_step132_native_report.py
+      - name: Step 133 verified-stock queue ownership extraction and parser tests
+        run: |
+          python3 tests/test_step133_queue_ownership.py
+          bash -n scripts/step133_extract_queue_ownership.sh
       - name: Report safety limitations
         if: always()
         run: |
