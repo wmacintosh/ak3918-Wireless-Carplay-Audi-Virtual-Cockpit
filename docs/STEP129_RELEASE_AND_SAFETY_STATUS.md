@@ -115,4 +115,17 @@ External listings/manuals for broader `RM-KPL083` variants appear under multiple
 
 **Remaining hard blocks:** actual installed uClibc/loader identity, safe target runtime and callback behavior, specific board revision, and independently validated non-CGI unbrick. Experimental stream 111 flashing remains prohibited by project safety gate.
 
-**No existing firmware files, device configuration, recovery tar, or `main` contents were modified by Steps 129–146.**
+## Step 147 — Owner explicitly requested actual stream-111 firmware testing
+
+[Step 147](STEP147_EXPLICIT_USER_STREAM111_LIVE_TEST.md) now contains a dedicated workflow for the user's explicitly requested **high-risk physical experiment**, rather than repeatedly requiring them to open the enclosure or contact the manufacturer. The experimental firmware is **not proven to boot or run safely**. An unbootable dongle may be unrecoverable using the existing Wi-Fi/CGI stock restorer, and there is still no known independent recovery method or verified installed target libc. These risks must be accepted by the owner at installation.
+
+The source-only installer/test tooling:
+- Builds `ak_hook_step128_test.tar` in the existing **network-disabled Docker cross-toolchain**, with combined cluster=1 and phone commands=1, and performs the real Step 142 ARM ELF static audit before copying a six-member test archive and SHA-256 manifest to a separate Desktop directory.
+- Rejects deviations from all **six** original/experimentally audited exact SHA-256 ELF hashes; retains the historical `ak_hook.tar` and stock archive unchanged.
+- `--probe` validates the local archive and issues only the known benign identity GET, requiring both the observed system and protocol versions.
+- `--install` additionally demands the local phrase `FLASH STREAM111 AT MY RISK` **before any POST**, then uses the stock-compatible CGI chunk receiver wire format and actual installation/reboot endpoints.
+- Host CI uses **synthetic archives and mock HTTP transports only**; a green job does not generate, upload or flash executable firmware.
+
+**Status:** test build/installer committed on isolated WIP; **no physical installation has occurred in this step** and no one has verified runtime CarPlay/VC video on the target yet. The source-based *release safety gate* remains unresolved. The user can explicitly initiate a risk-acknowledged, bounded experiment on their own adapter rather than claiming this is safe firmware for others.
+
+**No existing firmware files, device configuration, recovery tar, or `main` contents were modified by Steps 129–147.**
