@@ -224,29 +224,28 @@ int main(void) {
     for (int i = 0; i < COMBINED_REQUEST_LIMIT; ++i)
         CHECK(!g_combo_request[i].in_use);
 
-    /* An ambiguous native transport failure MUST keep a canceled tombstone.
-     * It may have enqueued a late callback despite returning an error. */
+    /* Verified stock ARM: HTTP send rc != 0 means preparation failed before
+     * CFRetain/dispatch_async_f. Repeated failures must never exhaust the
+     * eight record slots, and no callback is expected for these messages. */
     pthread_mutex_lock(&g_test_lock);
     g_test_should_block = 0;
     g_test_result = -19;
     pthread_mutex_unlock(&g_test_lock);
-    set_build(msg3, 600, 9999);
-    CHECK(shim_screen_http_send((void *)(uintptr_t)0x9000, msg3) == -19);
-    CHECK(g_combo_send_inflight == 0);
-    int found = 0;
-    for (int i = 0; i < COMBINED_REQUEST_LIMIT; ++i)
-        if (g_combo_request[i].in_use && g_combo_request[i].message == msg3 &&
-            g_combo_request[i].canceled) ++found;
-    CHECK(found == 1);
-
+    for (int j = 0; j < COMBINED_REQUEST_LIMIT * 3; ++j) {
+        set_build(msg3, 600, 9999 + (uint64_t)j);
+        CHECK(shim_screen_http_send((void *)(uintptr_t)0x9000, msg3) == -19);
+        CHECK(g_combo_send_inflight == 0);
+        CHECK(g_combo_inflight_generation == 0);
+        for (int i = 0; i < COMBINED_REQUEST_LIMIT; ++i)
+            CHECK(!g_combo_request[i].in_use);
+    }
+    /* A stray simulated response cannot match a finished failed request. */
     unsigned gen = 999;
     uint64_t conn = 999;
     pthread_mutex_lock(&g_state_lock);
     combo_consume_response_locked(msg3, &gen, &conn);
     pthread_mutex_unlock(&g_state_lock);
     CHECK(gen == 0 && conn == 0);
-    for (int i = 0; i < COMBINED_REQUEST_LIMIT; ++i)
-        CHECK(!g_combo_request[i].in_use);
 
     /* Stock-only messages with no injected build must keep their callback. */
     pthread_mutex_lock(&g_test_lock);
@@ -262,8 +261,8 @@ int main(void) {
     CHECK(g_combo_send_inflight == 0);
 
     free(raw1); free(raw2); free(raw3); free(raw4);
-    puts("PASS Step 129 integrated real wrapper+teardown; no-client reclaim,"
-         " late callback, uncertain-error tombstone and stock isolation");
+    puts("PASS Step 129/131 integrated wrapper+teardown; pre-enqueue failure"
+         " ticket reclamation, callback isolation and stock isolation");
     return 0;
 }
 '''
