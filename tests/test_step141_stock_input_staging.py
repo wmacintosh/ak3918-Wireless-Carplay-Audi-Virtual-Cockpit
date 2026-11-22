@@ -48,6 +48,14 @@ def call(root,recovery):
 
 
 class StagingNegativeControls(unittest.TestCase):
+    def test_tracked_real_recovery_tar_contains_exact_pinned_stock_elf(self):
+        # This archive is in GitHub; test the real 1.5MB artifact's content
+        # on CI, separately from synthetic staging safety tests.
+        tar = ROOT / module.gate.RECOVERY_NAME
+        self.assertTrue(tar.is_file(),"repo recovery archive missing")
+        digests = module.gate.audit_recovery_archive(tar)
+        self.assertEqual(digests["sdDongle"],module.gate.STOCK_SHA256)
+
     def test_first_time_stage_only_five_verified_members(self):
         with tempfile.TemporaryDirectory() as d:
             root=Path(d)
