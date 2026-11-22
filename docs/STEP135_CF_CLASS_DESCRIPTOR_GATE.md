@@ -1,6 +1,6 @@
 # Step 135 — Locate the HTTP-client Core Foundation class descriptor
 
-**Status:** read-only, verified-stock static cross-reference resolved; descriptor bytes and finalizer pointer still need an ELF data report. No runtime source or firmware changed.
+**Status:** verified-stock class descriptor report uploaded, inspected and archived. The Core Foundation finalizer-slot candidate is **`0xa4b08`**; its actual function body and queue-release order still require disassembly. No runtime source or firmware changed.
 
 ## Why this follows Step 134
 
@@ -71,10 +71,37 @@ This validates the script's exact-stock checksum and registration-address checks
 
 **Awaiting:** upload `AK3918_step135_cf_class_descriptor.txt` to inspect the candidate class record, relocations, and finalizer function. The earlier `AK3918_step134_client_finalizer.txt` is additional useful evidence if available.
 
+## Step 135 uploaded evidence — reviewed
+
+The user uploaded `AK3918_step135_cf_class_descriptor.txt`, a 321-line report from the SHA-256-gated original stock ELF. It is now preserved as [Step 135 native evidence](../evidence/AK3918_step135_cf_class_descriptor.txt).
+
+### Original class record at `0x134e8c`
+
+| Offset | File-backed value | Meaning under 32-bit `CFRuntimeClass` layout |
+| --- | --- | --- |
+| `+0x00` | `0x00000000` | Class version zero |
+| `+0x04` | `0x0010abbe` | Class name string pointer |
+| `+0x08` | `0x00000000` | No init callback |
+| `+0x0c` | `0x00000000` | No copy callback |
+| **`+0x10`** | **`0x000a4b08`** | **Finalizer function pointer candidate** |
+| `+0x14..+0x2c` | all zero | No other callback pointers in this descriptor |
+
+The record is **file-backed**, inside `.data.rel.ro` (`0x134000..0x135ec8`), and the ELF is `EXEC`, not a shared-object PIE. The report prints the complete 13-entry `.rel.dyn` list and the relevant filtered `.rel.plt` entries; no relocation at `0x134e9c` appears in the captured report. This supports interpreting `0xa4b08` as the on-disk function pointer, but is not a runtime stack trace.
+
+The `CFRuntimeClass` ABI in the [Apple open-source CFRuntime header](https://github.com/apple-oss-distributions/CF/blob/main/CFRuntime.h) declares `version`, `className`, `init`, `copy`, then `finalize`. In 32-bit ARM, that means the finalize slot is offset `0x10`. **The original firmware's runtime at `0x84660` must still be correlated with this ABI; the function at `0xa4b08` has not been disassembled as part of this uploaded report.**
+
+The following words at `+0x30` (`0x10ad10`) and `+0x3c` (`0xa6cc0`) belong to a **neighboring class descriptor**, not callbacks belonging to this HTTP-client record.
+
+### Decision
+
+The file identifies a much narrower target: `0xa4b08`. That is **not** yet evidence that the HTTP client's queue retain at `0xa64a8` is eventually released in this finalizer, nor that all queued callbacks run first. The missing-HTTP-callback / `dispatch_async_f` allocation-failure issue remains open. Retain the existing fail-closed request tracking.
+
+**Next:** [Step 136 read-only finalizer disassembly](STEP136_HTTP_FINALIZER_CONTROL_FLOW.md) targets `0xa4b08`, the CF class name, the queue-release helper and the normal global teardown path.
+
 ## Validation and safety scope
 
 `tests/test_step135_class_descriptor.py` confirms the source-derived PC-relative address calculation, read-only mounts, pinned native callsite opcodes, ELF32 file-backed VMA extraction, and fail-closed handling of malformed ELF, wrong architecture, and NOBITS data. Existing CI continues checking source syntax, callback lifecycle, queue ownership, and experimental packaging vetoes.
 
 No `altscreen.c` or `build_hook.py` modifications are authorized by this evidence. The caller's `http_send == 0` still cannot prove queue-node insertion (Step 133 identified internal `calloc` failure), and neither CF finalization nor process shutdown has been established as a reliable cancellation barrier. **Do not erase callback tombstones or manually release retained native objects by inference**. This work does not authorize flashing the experimental stream-111 firmware.
 
-**Next evidence gate:** locate the runtime class record and its finalize callback pointer, identify any relocations, disassemble the actual callback, and confirm its `client+0x08` release plus its sequencing relative to queue-held references. If the descriptor is not present in file-backed sections, document that limit and change the audit method, rather than invent a finalizer.
+**Next evidence gate:** the runtime class record is file-backed and now identifies `0xa4b08` at its finalizer slot; disassemble that function to determine whether it releases `client+0x08` and the ordering relative to queue-held references. Do not claim a callback-completion barrier without that native proof.
