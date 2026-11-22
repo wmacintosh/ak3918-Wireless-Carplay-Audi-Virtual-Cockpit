@@ -125,4 +125,4 @@ A queue destructor with pending nodes therefore indicates an abnormal ownership 
 - Reclaim a successfully enqueued request record only once the corresponding native completion is proven, **not** merely at client invalidation, queue free, timeout or reconnect.
 - The experimental combined stream-111 firmware is **not device-validated and not cleared for flashing**. `main`, historical firmware and stock recovery are unchanged.
 
-**Pending:** identify the HTTP client's CF finalizer and trace its release of `client+0x08`; verify how global main-queue shutdown is ordered. No missing-callback fix is justified by the verified evidence.
+**Next:** [Step 134 — HTTP client CF finalizer and global queue shutdown](STEP134_CLIENT_FINALIZER_AND_GLOBAL_QUEUE.md) adds a verified-stock, read-only extraction and opcode gate to locate the client's `client+0x08` release and global queue retirement ordering. This remains a pending native evidence question; no missing-callback fix is justified by the currently verified source.
