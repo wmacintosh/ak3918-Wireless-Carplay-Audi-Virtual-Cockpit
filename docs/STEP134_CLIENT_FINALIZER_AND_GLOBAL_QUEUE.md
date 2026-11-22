@@ -58,6 +58,21 @@ bash scripts/step134_extract_client_finalizer.sh
 
 Expected output: `~/Desktop/AK3918_step134_client_finalizer.txt`. **Upload the report to the conversation for inspection.** No compilation, firmware packaging, flashing or dongle interaction is performed.
 
+## User-run Step 134 extraction result (2026-11-21)
+
+The user updated the experimental branch from `fc0a933` to `da29d1c`, and ran `bash scripts/step134_extract_client_finalizer.sh` on their Mac. Their terminal reported:
+
+```text
+PASS: stock client queue retain and global queue retirement anchors captured
+NOTE: finalizer identity and shutdown guarantees require manual control-flow analysis
+PASS: Step 134 read-only client finalizer report at /Users/wademacintosh/Desktop/AK3918_step134_client_finalizer.txt
+No executable, archive, device setting or recovery firmware changed.
+```
+
+This establishes that the checksum-gated read-only script completed and produced a report for the source revision `da29d1c`. The GitHub host tests for the script also passed. **The full generated report has not yet been uploaded or archived in this repository**, so it cannot be used to identify the CF finalizer or certify queue shutdown ordering. The local PASS applies to instruction capture only, not callback-delivery guarantees.
+
+**Pending evidence:** attach `~/Desktop/AK3918_step134_client_finalizer.txt` to the conversation; inspect the complete class descriptor, finalizer callsites and global shutdown branches before considering a source change.
+
 ## Validation and decision gate
 
 `tests/test_step134_finalizer_extraction.py` checks the script's SHA-256 gate, read-only Docker mounts, shell syntax, exact anchors, and rejection of synthetic missing or altered instructions. GitHub Actions runs these tests together with the pre-existing source-safety and callback-tombstone tests. The tests cannot resolve the finalizer until the stock ARM report itself is examined.
