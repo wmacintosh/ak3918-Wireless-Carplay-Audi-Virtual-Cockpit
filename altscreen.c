@@ -1405,8 +1405,16 @@ int shim_session_setup(void *session, void *req, void **resp_out) {
     int session_changed = 0;
     pthread_mutex_lock(&g_state_lock);
     if (session != NULL && g_session != session) {
-        g_session = session;
+        /* Step 130: prevent a session switch from dropping ownership of an
+         * old session while send_phone_cmd_safe still uses its unowned pointer.
+         * Block new commands first, keep the old session identity published,
+         * and release the mutex while existing commands finish. The old
+         * session finalizer must still recognize its pointer during this
+         * drain. Do not hold g_state_lock across vendor command dispatch. */
         g_session_valid = 0; /* Valid only after successful SETUP. */
+        while (g_session_cmd_inflight > 0)
+            pthread_cond_wait(&g_session_cv, &g_state_lock);
+        g_session = session;
         g_session_generation++;
 #if AK_ENABLE_COMBINED_CLUSTER
         g_combo_inflight_generation = 0;
