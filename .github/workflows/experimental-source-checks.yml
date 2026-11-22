@@ -59,6 +59,11 @@ jobs:
         run: python3 tests/test_step129_package_policy.py
       - name: Step 129 integrated wrapper and teardown lifecycle (host only)
         run: python3 tests/run_step129_integrated_lifecycle.py
+      - name: Step 129 ARM/uClibc matrix script syntax (Docker matrix is local-only)
+        run: |
+          bash -n scripts/step129_validate_arm_matrix.sh
+          grep -q 'combined in 0 1' scripts/step129_validate_arm_matrix.sh
+          grep -q 'phone in 0 1' scripts/step129_validate_arm_matrix.sh
       - name: Report safety limitations
         if: always()
         run: |
