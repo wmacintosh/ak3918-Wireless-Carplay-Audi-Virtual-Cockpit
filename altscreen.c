@@ -295,6 +295,20 @@ static void combo_cancel_ticket_locked(uint64_t ticket) {
     }
 }
 
+/* Only reclaim records when this wrapper is certain native http_send was
+ * NEVER invoked. A nonzero native return alone cannot guarantee there will
+ * be no future callback; retain a canceled tombstone in that case. */
+static void combo_forget_never_submitted_locked(uint64_t ticket) {
+    if (!ticket) return;
+    for (int i = 0; i < COMBINED_REQUEST_LIMIT; ++i) {
+        struct combo_request *r = &g_combo_request[i];
+        if (r->in_use && r->ticket == ticket) {
+            memset(r, 0, sizeof *r);
+            return;
+        }
+    }
+}
+
 static void combo_consume_response_locked(void *msg,
                                           unsigned *gen_out,
                                           uint64_t *connid_out) {
@@ -399,6 +413,9 @@ static void combo_send_enter_locked(void) {
 
 static void combo_send_leave_locked(int rc, unsigned gen, uint64_t ticket) {
     if (rc != 0) {
+        /* Do NOT clear this slot merely because native http_send failed:
+         * until all native failure paths are proven non-enqueueing, a late
+         * response may still run the shim callback for this message. */
         combo_cancel_ticket_locked(ticket);
         if (g_combo_inflight_generation == gen)
             g_combo_inflight_generation = 0;
@@ -808,8 +825,18 @@ int shim_screen_http_send(void *client, void *msg) {
         decision = combo_prepare_send_locked(pthread_self(), msg, stock_cb,
                                              &gen, &ticket);
         if (decision == 1) {
-            *(void **)((char *)msg + 0x904) = (void *)&shim_screen_response;
-            combo_send_enter_locked();
+            if (!client) {
+                /* Known preflight failure: NO native send, NO callback.
+                 * Reclaim just this ticket instead of leaking one of 8 slots. */
+                combo_forget_never_submitted_locked(ticket);
+                if (g_combo_inflight_generation == gen)
+                    g_combo_inflight_generation = 0;
+                ticket = 0;
+                decision = -1;
+            } else {
+                *(void **)((char *)msg + 0x904) = (void *)&shim_screen_response;
+                combo_send_enter_locked();
+            }
         }
         pthread_mutex_unlock(&g_state_lock);
     }
