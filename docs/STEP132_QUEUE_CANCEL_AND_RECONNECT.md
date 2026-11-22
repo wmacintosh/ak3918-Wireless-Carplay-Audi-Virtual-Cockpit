@@ -61,6 +61,19 @@ bash scripts/step132_extract_queue_cancellation.sh
 
 Output: `~/Desktop/AK3918_step132_queue_cancellation.txt`. The script refuses a wrong stock SHA-256 and does not build, alter or package firmware. Attach this report for targeted analysis of queue destruction/callback delivery semantics.
 
+## Local extraction validation — user-reported
+
+After fast-forwarding the experimental branch from `263596b` to `02b7a0e`, the user ran `bash scripts/step132_extract_queue_cancellation.sh` on their Mac. The command reported:
+
+```
+PASS: Step 132 verified-stock queue and cancellation report at /Users/wademacintosh/Desktop/AK3918_step132_queue_cancellation.txt
+No firmware was modified, packaged, installed or flashed.
+```
+
+The script checks the original stock ELF SHA-256 and ensures all required ARM routine-entry addresses were captured. **This confirms successful extraction only**: the complete report has not yet been supplied for review, so it does **not** establish whether abandoned pending queue nodes receive `msg+0x904` or can be discarded without callback delivery.
+
+The source-derived reconnect and read-only script checks passed [GitHub Actions run 44978247878](https://github.com/wmacintosh/ak3918-Wireless-Carplay-Audi-Virtual-Cockpit/actions/runs/44978247878) at commit `02b7a0e`. The report itself remains the next evidence input.
+
 ## Deployment decision
 
 The Step 129/130/131 source/ELF checks are distinct from live firmware validation. The combined stream-111 feature remains experimental, disabled by default; the optional test archive is not authorized for installation as a consequence of these findings. No change to `main`, stock recovery archive, or historical firmware is required.
