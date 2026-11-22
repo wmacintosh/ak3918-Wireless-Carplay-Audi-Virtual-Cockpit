@@ -336,14 +336,34 @@ def make_tar(outdir, tar_name="ak_hook.tar"):
                 t.addfile(ti, fh)
     print("wrote", tar, os.path.getsize(tar), "md5", hashlib.md5(open(tar, "rb").read()).hexdigest())
 
-def main():
-    # The explicit legacy packaging flag must not bypass the unresolved
-    # native send/teardown race in stream-111 combined mode.
-    if ENABLE_COMBINED_CLUSTER and os.environ.get("AK_STEP100_ALLOW_UNVERIFIED_PACKAGE") == "1":
+def package_plan():
+    """Validate explicit packaging flags before touching build outputs.
+
+    Experimental combined and historical packages must never be interchangeable.
+    A successful source/ELF build alone does not authorize installation.
+    """
+    legacy = os.environ.get("AK_STEP100_ALLOW_UNVERIFIED_PACKAGE") == "1"
+    test_only = os.environ.get("AK_STEP128_ALLOW_TEST_PACKAGE") == "1"
+    if ENABLE_COMBINED_CLUSTER and legacy:
         raise SystemExit(
-            "REFUSING combined stream-111 firmware packaging: Step 125 "
-            "teardown/send race remains unresolved (source-only experiment)."
+            "REFUSING combined stream-111 firmware packaging with legacy "
+            "AK_STEP100_ALLOW_UNVERIFIED_PACKAGE. Only the separate, explicitly "
+            "opted-in Step 128 test archive is eligible; NOT device validated."
         )
+    if test_only and not ENABLE_COMBINED_CLUSTER:
+        raise SystemExit(
+            "REFUSING AK_STEP128_ALLOW_TEST_PACKAGE without "
+            "AK_ENABLE_COMBINED_CLUSTER=1."
+        )
+    if test_only:
+        return "ak_hook_step128_test.tar"
+    if legacy:
+        return "ak_hook.tar"
+    return None
+
+
+def main():
+    package_name = package_plan()  # Safety policy enforced before file writes.
     os.makedirs(DST, exist_ok=True)
     for f in LIBS:
         open(os.path.join(DST, f), "wb").write(open(os.path.join(SRC, f), "rb").read())
@@ -351,15 +371,15 @@ def main():
     patch_sddongle(os.path.join(SRC, "sdDongle"), os.path.join(DST, "sdDongle"))
     from repair_elf import repair
     print("relocated dynamic string table", repair(os.path.join(DST, "sdDongle")))
-    # Do not emit a flashable tar by default.
-    if ENABLE_COMBINED_CLUSTER and os.environ.get("AK_STEP128_ALLOW_TEST_PACKAGE") == "1":
-        print("Step 128: packaging experimental combined test tar (keep stock recovery ready)")
-        make_tar(DST, tar_name="ak_hook_step128_test.tar")
-    elif os.environ.get("AK_STEP100_ALLOW_UNVERIFIED_PACKAGE") == "1":
-        print("WARNING: explicitly packaging an UNVERIFIED Step 100 build")
-        make_tar(DST)
+    if package_name == "ak_hook_step128_test.tar":
+        print("WARNING: producing an EXPERIMENTAL, NOT device-validated test archive.")
+        print("Do NOT flash without independent device/recovery review.")
+        make_tar(DST, tar_name=package_name)
+    elif package_name == "ak_hook.tar":
+        print("WARNING: explicitly packaging the historical unverified legacy build.")
+        make_tar(DST, tar_name=package_name)
     else:
-        print("Step 100: NO flashable tar generated (runtime tests required).")
+        print("NO firmware archive generated; source/ELF validation only.")
 
 if __name__ == "__main__":
     main()
