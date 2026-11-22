@@ -507,7 +507,12 @@ code = harness.replace("{{CTX_TYPE}}",ctx_type).replace(
 with tempfile.TemporaryDirectory(prefix="ak3918-step140-") as directory:
     path = Path(directory) / "step140_source_hooks.c"
     path.write_text(code)
-    for mode, flags in (("normal",[]),("ubsan",["-fsanitize=undefined"])):
+    # Native stock message fields are ARM32 and only 4-byte aligned.
+    # Host64 UBSan demands 8-byte alignment for void* and reports a false
+    # positive for the adjacent 0x49c/0x4a0 native fields. Keep all OTHER
+    # undefined-behavior checks enabled; this does not validate target ABI.
+    for mode, flags in (("normal",[]),
+                        ("ubsan",["-fsanitize=undefined","-fno-sanitize=alignment"])):
         output = Path(directory) / ("step140_"+mode)
         cmd = ["cc","-std=gnu11","-O1","-g","-Wall","-Wextra","-Werror",
                "-Wno-unused-function","-Wno-unused-variable","-pthread",
