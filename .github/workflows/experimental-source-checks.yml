@@ -119,6 +119,11 @@ jobs:
         run: |
           python3 -m py_compile scripts/step141_stage_verified_stock_inputs.py
           python3 tests/test_step141_stock_input_staging.py
+      - name: Step 142 isolated ARM ELF builder and static auditor source safety checks
+        run: |
+          bash -n scripts/step142_isolated_elf_audit.sh
+          python3 -m py_compile scripts/step142_audit_patched_elf.py
+          python3 tests/test_step142_isolated_elf_audit.py
       - name: Report safety limitations
         if: always()
         run: |
