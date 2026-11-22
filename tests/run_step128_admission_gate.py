@@ -188,7 +188,8 @@ int main(void) {
     CHECK(g_teardown_finished == 1);
     CHECK(g_combo_send_inflight == 0);
 
-    /* Verify failing http_send (rc != 0) cancels ticket and clears inflight state. */
+    /* Step 131 verified stock: rc != 0 means no queue submission.
+     * Reclaim the record and clear in-flight state without a callback. */
     pthread_mutex_lock(&g_state_lock);
     g_session_generation = 600;
     g_alt_seen_generation = 600;
@@ -209,6 +210,8 @@ int main(void) {
     combo_send_leave_locked(-1, gen3, ticket3);
     CHECK(g_combo_send_inflight == 0);
     CHECK(g_combo_inflight_generation == 0);
+    for (int i = 0; i < COMBINED_REQUEST_LIMIT; ++i)
+        CHECK(!g_combo_request[i].in_use);
     unsigned out_gen = 1;
     uint64_t out_conn = 1;
     combo_consume_response_locked(msg2, &out_gen, &out_conn);
