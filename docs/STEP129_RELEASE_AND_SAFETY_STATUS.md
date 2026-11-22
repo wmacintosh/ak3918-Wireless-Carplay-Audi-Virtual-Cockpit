@@ -43,6 +43,18 @@ Passing this policy does **not** authorize flashing. The test archive contains e
 
 Avoid merging another branch wholesale until all changes are reviewed against the current wrapper and stock ARM evidence.
 
+## Reproducible ARM/uClibc matrix (not yet run for Step 129)
+
+The **local Mac Docker** script `scripts/step129_validate_arm_matrix.sh` builds and validates all four ARM926EJ-S/uClibc shared-library configurations in a disposable temporary directory. Both the repository source and Buildroot volume are mounted read-only; it never patches `sdDongle` or creates a firmware archive. CI checks the script syntax only: **the ARM matrix has not been executed by GitHub Actions**.
+
+```bash
+cd "$HOME/AK3918_GitHub"
+git pull --ff-only
+bash scripts/step129_validate_arm_matrix.sh
+```
+
+A passing result validates compilation, ARM/soft-float identity, `libc.so.0`, `libSdH.so` SONAME, constructor, and exported hooks. It is **not an integration or device-runtime test**.
+
 ## Before any device installation
 
 1. Independently reproduce ARM/uClibc cross-build for the chosen feature flag combination and inspect ELF dynamic imports, hook callsites and target architecture.
