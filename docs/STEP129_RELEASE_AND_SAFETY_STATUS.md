@@ -91,9 +91,11 @@ The existing `flash_ak.py --check-only` **still uploads archive chunks**, despit
 
 Static import coverage cannot prove correct **target** loader/linker resolution, exact installed uClibc symbols, or runtime safety. Experimental packaging and flashing remain blocked.
 
-## Step 144 — Explicit read-only live device fingerprint (awaiting Mac run)
+## Step 144 — Live device identity PASS; system/protocol versions recorded
 
 [Step 144](STEP144_TARGET_IDENTITY_AND_RECOVERY_EVIDENCE.md) adds a **single GET, explicit-opt-in** collector for the known stock Suding `/cgi-bin/getversion.cgi` endpoint at `192.168.200.1`; it refuses redirects, unknown devices and oversized responses and redacts non-allowlisted fields. The default invocation makes **no network requests**, and GitHub CI only tests mocked HTTP responses. No authenticated shell, firmware CGI upload, command injection, reboot, filesystem reads or persistent target-side action is performed.
+
+The user ran Step 144 successfully on the physical device: `platform=AK3918AN`, `custom=suding`, `system_version=20260411104900CA`, `protocol_version=20261008165915`. See the [archived user-pasted device report](../evidence/AK3918_step144_device_identity_user_terminal.txt). **The earlier expected `20261008165915` value is a reported *protocol* version, not the device's *system* version.** Do not assume the stock tar or installed libc is byte-identical based on this version response.
 
 Even a successful target identity GET **cannot** establish the installed `libc.so.0` / `ld-uClibc.so.0` hashes or a verified board-specific unbrick mechanism. Research on different AK3918-based adapters is not evidence for this specific unit's recovery layout. Experimental packaging/flashing remains blocked.
 
