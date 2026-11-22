@@ -1,6 +1,35 @@
 # Step 142 — Isolated ARM/uClibc patched-ELF and loader-metadata audit
 
-**Status:** test and report collection prepared. Mac execution and actual patched-ELF output are pending. **Not an approval to package, upload or flash firmware.** No production C code, patcher, original stock binary, recovery archive, historical firmware or `main` was changed.
+**Status: Mac Step 142 executed and the isolated, actual patched ARM ELF static audit PASSED.** The full user-pasted output is [archived verbatim](../evidence/AK3918_step142_isolated_elf_audit_uploaded.md). **Not an approval to package, upload or flash firmware.** No production C code, patcher, original stock binary, recovery archive, historical firmware or `main` was changed.
+
+## Verified local Step 142 result (user-supplied Mac report)
+
+Execution at original experimental branch commit `caa275f32452` successfully repeated Step 141 input verification, used the Docker ARM/uClibc compiler, compiled the shim, patched and repaired a **disposable copy** of stock `sdDongle`, and ran the static auditor on both real ephemeral ELF files. The full run includes `readelf` program headers, dynamic tags, relocations and symbol tables.
+
+| Gate | Observed result |
+| --- | --- |
+| Build policy | `build_hook.package_plan() is None`; no firmware tar generated |
+| Architecture | ARM ELF32, EABI v5, soft-float; uClibc `libc.so.0` |
+| Original stock | SHA-256 `b2e32b82a37667500ca4f1c8266604bf28cc923ac94343907eb68c843d92e0a1` |
+| Setup BL `0x5ec50` | trampoline `0x102e74` via pointer slot `0x1369fc` |
+| Stream-array BL `0x2fadc` | trampoline `0x102ea0` via pointer slot `0x13c644` |
+| HTTP-send BL `0x2fbb0` | trampoline `0x102eac` via pointer slot `0x13c648` |
+| Session finalizer `0x134078` | trampoline `0x102e94` via pointer slot `0x13c640` |
+| Historical display patches | all five ARM words exact |
+| `.bss` | exactly 12 bytes extra for three pointer slots |
+| Dynamic loader | relocated `DT_STRTAB=0x123434`; `DT_STRSZ=12124`; new `DT_NEEDED=libSdH.so`; `DT_RUNPATH=$ORIGIN` |
+| ELF file layout | two nonoverlapping, congruent `PT_LOAD` segments; interpreter `/lib/ld-uClibc.so.0` |
+| Hook imports/exports | SONAME `libSdH.so`, `NEEDED=libc.so.0`, `INIT_ARRAY`, five required shim symbols present |
+| Final static audit | `PASS: STEP142 STATIC PATCHED ELF AUDIT` and `PASS: STEP142 ISOLATED ARM/uClibc ELF AUDIT COMPLETED` |
+
+The exact inspected temporary bytes had these hashes:
+
+- Patched `sdDongle`: `0e63050bdd63bebb0d14f8f751b1e920f2679da375b0498a1ace06a2ba376039`
+- Hook `libSdH.so`: `6e70f606501354267567873ec75d291914a5f946a04be3730dc4f085575d1bd9`
+
+The user-pasted output shows **no failure or warnings from the compilation/static-audit commands**. The `readelf` report lists ordinary unresolved dynamic functions including `pthread_create`, `pthread_mutex_lock`, `pthread_cond_wait` and socket functions; these are **not** by themselves errors in a shared ELF. However, an actual target-loader resolution of those dependencies is **not proven by `readelf -d` or `readelf -s`**. `shim_screen_response` is a local/internal function in the symbol table, not a globally exported symbol; this fits callback-pointer use and should not be presented as a dynamic export requirement.
+
+**Remaining unresolved:** real dongle loader startup and library search behavior, relocation application on target, native callback ABI and concurrency, actual media delivery, and a recovery procedure that works if the dongle stops booting or serving HTTP. The inspected objects were automatically deleted when the disposable Docker session finished. No deployable experimental tar was produced.
 
 ## Basis
 
@@ -56,4 +85,4 @@ The script itself writes the complete report to `~/Desktop/AK3918_step142_isolat
 
 `tests/test_step142_isolated_elf_audit.py` pins the no-flash/no-network/no-output-mount shell isolation, source constants, ARM BL target decoding, malformed ELF rejection and static audit requirements. GitHub CI does not have the user's Buildroot Docker volume; therefore a green CI run validates only source/shell/host test logic, **not the actual patched ELF**.
 
-**Next:** review the actual Mac report, check any mismatch or undefined/import relocation, and independently establish an out-of-band recovery method if the dongle cannot boot or serve CGI. Neither Step 141 nor Step 142 clears the live flash gate. The historical `flash_ak.py` continues to target the older `ak_hook.tar` and must not be repurposed by renaming a test archive.
+**Next:** conduct a targeted, read-only dependency/ABI audit against the exact stock target libraries and loader where available, and independently establish out-of-band recovery if CGI becomes unavailable. Neither Step 141 nor Step 142 clears the live flash gate. The historical `flash_ak.py` continues to target the older `ak_hook.tar` and must not be repurposed by renaming a test archive.
