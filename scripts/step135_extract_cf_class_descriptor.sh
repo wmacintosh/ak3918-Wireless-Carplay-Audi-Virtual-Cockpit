@@ -43,6 +43,9 @@ OB=/workspace/buildroot-work/buildroot/output/host/bin/arm-buildroot-linux-uclib
 RD=/workspace/buildroot-work/buildroot/output/host/bin/arm-buildroot-linux-uclibcgnueabi-readelf
 STOCK=/repo/stock_analysis/sdDongle
 test -x "$OB"
+if [[ ! -x "$RD" ]]; then
+    RD="$(command -v readelf)"
+fi
 test -x "$RD"
 test -r "$STOCK"
 
