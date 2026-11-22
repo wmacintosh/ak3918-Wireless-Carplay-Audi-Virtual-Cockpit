@@ -111,6 +111,10 @@ jobs:
         run: python3 tests/run_step140_stream111_contract.py
       - name: Step 140 exact opt-in screen hook isolation across C preprocessor modes
         run: python3 tests/test_step140_feature_isolation.py
+      - name: Step 141 offline exact-stock and recovery archive preflight negative controls
+        run: |
+          python3 -m py_compile scripts/step141_readonly_firmware_preflight.py
+          python3 tests/test_step141_readonly_firmware_preflight.py
       - name: Report safety limitations
         if: always()
         run: |
