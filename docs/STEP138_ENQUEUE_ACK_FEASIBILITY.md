@@ -64,6 +64,14 @@ A source-only candidate design must satisfy **all** of these conditions before a
 
 These are **test-model invariants, not observations from the physical dongle**. No native allocator fault injection or instrumented dispatcher is executed.
 
+## Follow-up: the vendor's own no-timeout SETUP wait
+
+The user brought back a previously supplied stock `0x2f6b8` disassembly showing that after `HTTPClientSendMessage` returns zero at `0x2fbb0`, the caller takes the zero-result branch at `0x2fbf4` and invokes wait helper `0xa15b8` at `0x2fc54`, with all-ones `r2:r3` timeout fields. Its response callback `0x2ec7c` signals the associated context through `0xa1338` at `0x2ee74`. The exact excerpt is now archived and checked as [Step 139 — Stock SETUP wait and Step 115 design decision](STEP139_STOCK_WAIT_BASELINE_AND_TOMBSTONES.md).
+
+If the native work node is dropped by allocation failure and no other completion signal occurs, **the unmodified stock caller may already block indefinitely** on the same SETUP request. This is a *possible vendor-baseline severe-OOM path*, not evidence that the user's dongle experienced it. The callsite has no finite timeout; the internal wait implementation was not re-disassembled for this follow-up.
+
+**Consequently, no invasive dispatcher acknowledgment hook is warranted solely to address this edge case.** Step 115's callback tombstones correctly avoid unsafe callback pointer reuse. The hypothetical receipt study below remains documentation and tests only, not an implementation roadmap.
+
 ## Decision
 
 **Reject** timeout cleanup, queue-depth polling, global refcount inference and log-derived ticket reclamation. **Do not add** an invasive dispatcher hook or native reference manipulations to the experimental branch without a separate validated design and runtime safety plan.
