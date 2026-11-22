@@ -77,4 +77,10 @@ The source-only [Step 141 pre-flash gate](STEP141_EXPERIMENTAL_PRE_FLASH_GATE.md
 
 The script's result is **not** a flash authorization. Before any experimental installation, the repaired/patched ELF, loader ABI/import resolution and target recovery method independent of booted Wi-Fi/HTTP CGI must be reviewed. The historical `flash_ak.py` selects `ak_hook.tar` or `--stock`, not `ak_hook_step128_test.tar`; do not rename experimental firmware to bypass that separation.
 
-**No existing firmware files, device configuration, recovery tar, or `main` contents were modified by Steps 129–141.**
+## Step 142 isolated patched-ELF validation — completed on Mac
+
+The actual user-run [Step 142 isolated build and static audit](STEP142_ISOLATED_PATCHED_ELF_AUDIT.md) **passed** for both feature flags enabled. The original stock hash, all four correct ARM trampolines, callback pointer slots, five original display patches, new ELF dynamic string table, `DT_NEEDED=libSdH.so`, `RUNPATH=$ORIGIN`, uClibc/ARM soft-float shared-object metadata and expected exports were verified on the disposable built bytes. See [archived full user-pasted report](../evidence/AK3918_step142_isolated_elf_audit_uploaded.md).
+
+This clears the **static build and ELF-layout** gate, **not** the target loader/runtime or unbrick recovery gate. The temporary experiment was deleted; no flashable archive was built. Undefined dynamic symbol resolution against the target's actual libraries, native callback lifetime and independent recovery if the network/CGI goes away are still unverified. Do not substitute old `ak_hook.tar` or rename an experimental test archive to use the historical flashing tool.
+
+**No existing firmware files, device configuration, recovery tar, or `main` contents were modified by Steps 129–142.**
