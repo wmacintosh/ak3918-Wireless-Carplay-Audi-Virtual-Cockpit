@@ -83,4 +83,12 @@ The actual user-run [Step 142 isolated build and static audit](STEP142_ISOLATED_
 
 This clears the **static build and ELF-layout** gate, **not** the target loader/runtime or unbrick recovery gate. The temporary experiment was deleted; no flashable archive was built. Undefined dynamic symbol resolution against the target's actual libraries, native callback lifetime and independent recovery if the network/CGI goes away are still unverified. Do not substitute old `ak_hook.tar` or rename an experimental test archive to use the historical flashing tool.
 
-**No existing firmware files, device configuration, recovery tar, or `main` contents were modified by Steps 129–142.**
+## Step 143 — Loader symbols and recovery beyond CGI (offline, pending Mac report)
+
+[Step 143](STEP143_LOADER_RECOVERY_CHECK.md) adds a **separate** read-only ELF dynamic-import/provider audit and recovery-route classification. It distinguishes verified-stock `sdDongle` and the four original vendor libraries from the Buildroot toolchain's libc/pthread candidates, rather than treating the development sysroot as the installed dongle's runtime. The experimental `libSdH.so` is compiled **ephemerally** with both feature flags enabled. Strong dynamic imports are enumerated and each matched to its actual available provider; missing symbols fail closed. The actual Mac audit report has not yet been submitted.
+
+The existing `flash_ak.py --check-only` **still uploads archive chunks**, despite skipping submission and reboot. Do not treat it as a harmless read-only device check. Both historical update and `--stock` restore remain dependent on the dongle booting to serve CGI, which is not a verified recovery route for a nonbooting unit. No specific hardware bootloader/UART recovery path is documented as working on this board revision.
+
+Static import coverage cannot prove correct **target** loader/linker resolution, exact installed uClibc symbols, or runtime safety. Experimental packaging and flashing remain blocked.
+
+**No existing firmware files, device configuration, recovery tar, or `main` contents were modified by Steps 129–143.**
