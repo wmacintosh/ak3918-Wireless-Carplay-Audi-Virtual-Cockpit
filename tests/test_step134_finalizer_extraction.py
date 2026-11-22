@@ -13,7 +13,8 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scripts/step134_extract_client_finalizer.sh"
-EVIDENCE = ROOT / "evidence/AK3918_step133_queue_ownership.txt"
+EVIDENCE = ROOT / "evidence/AK3918_step132_queue_cancellation.txt"
+OWNERSHIP_EVIDENCE = ROOT / "evidence/AK3918_step133_queue_ownership.txt"
 SOURCE = ROOT / "altscreen.c"
 EXPECTED_HASH = "b2e32b82a37667500ca4f1c8266604bf28cc923ac94343907eb68c843d92e0a1"
 CRITICAL = [
@@ -35,6 +36,7 @@ class Step134QueueOwnership(unittest.TestCase):
     def setUpClass(cls):
         cls.script = SCRIPT.read_text()
         cls.native = EVIDENCE.read_text()
+        cls.ownership = OWNERSHIP_EVIDENCE.read_text()
         cls.source = SOURCE.read_text()
         cls.embedded = re.search(
             r"<<'CHECK_REPORT'\n(.*?)\nCHECK_REPORT", cls.script, re.S
@@ -112,6 +114,8 @@ class Step134QueueOwnership(unittest.TestCase):
         )
         for item in required_report:
             self.assertIn(item, self.native)
+        for item in ("a64a8:", "a19ec:", "a30a4:", "a342c:"):
+            self.assertIn(item, self.ownership)
         cancel = self.source.split(
             "static void combo_cancel_all_requests_locked(void) {", 1
         )[1].split("static int combo_claim_request_locked", 1)[0]
