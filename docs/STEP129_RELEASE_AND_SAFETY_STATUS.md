@@ -32,7 +32,7 @@ Passing this policy does **not** authorize flashing. The test archive contains e
 - Combined-mode `shim_screen_http_send` now releases request tracking **only when native send was definitely not called** (e.g., a missing HTTP client). It does not install its response callback or increment an outstanding-send counter in that path.
 - Native `http_send` returning nonzero remains ambiguous until every error/enqueue path is proven. Its ticket stays canceled until a callback is seen. This is intentional fail-closed logic, but repeated opaque failures can still fill the eight-slot table: **not resolved in full**.
 - The Step 129 integration harness compiles actual `shim_screen_http_send` and `shim_session_teardown` bodies extracted from `altscreen.c`, with controlled pthreads and stock transport stubs; this complements the existing isolated Step 128 helper test. No real HTTP or receiver-session hardware execution occurs.
-- CI includes all four C syntax combinations of `AK_ENABLE_COMBINED_CLUSTER={0,1}` and `AK_ENABLE_PHONE_CMDS={0,1}`. **Only the host syntax combinations are run in CI**; previous ARM/uClibc validation reports did not cover every combination, and those builds require repeating on the verified local toolchain.
+- CI includes all four host C syntax combinations of `AK_ENABLE_COMBINED_CLUSTER={0,1}` and `AK_ENABLE_PHONE_CMDS={0,1}`. **The user separately ran the four-mode ARM/uClibc matrix on their Mac and reported PASS for every combination (November 21, 2026).** GitHub Actions still performs only host syntax checks for these modes; the local ARM result is not a device-runtime test.
 - The old Step 125 race regression is explicitly a *negative control for the previous implementation*, not proof that Step 128/129 has the same race.
 
 ## Branch integration audit
@@ -43,9 +43,9 @@ Passing this policy does **not** authorize flashing. The test archive contains e
 
 Avoid merging another branch wholesale until all changes are reviewed against the current wrapper and stock ARM evidence.
 
-## Reproducible ARM/uClibc matrix (not yet run for Step 129)
+## Reproducible ARM/uClibc matrix — all four local configurations passed
 
-The **local Mac Docker** script `scripts/step129_validate_arm_matrix.sh` builds and validates all four ARM926EJ-S/uClibc shared-library configurations in a disposable temporary directory. Both the repository source and Buildroot volume are mounted read-only; it never patches `sdDongle` or creates a firmware archive. CI checks the script syntax only: **the ARM matrix has not been executed by GitHub Actions**.
+The **local Mac Docker** script `scripts/step129_validate_arm_matrix.sh` builds and validates all four ARM926EJ-S/uClibc shared-library configurations in a disposable temporary directory. Both the repository source and Buildroot volume are mounted read-only; it never patches `sdDongle` or creates a firmware archive. The user supplied terminal output for a successful run after fast-forwarding to commit `62d34c6f80f65690e9ae44a8ff1bd3e86e31a56f`, with `PASS` for combined=0/phone=0, combined=0/phone=1, combined=1/phone=0, and combined=1/phone=1. The script also reported that it did not modify firmware/recovery binaries or tar archives. **This records user-reported local validation, not an independently collected build log or a GitHub-hosted ARM matrix run.**
 
 ```bash
 cd "$HOME/AK3918_GitHub"
@@ -57,7 +57,7 @@ A passing result validates compilation, ARM/soft-float identity, `libc.so.0`, `l
 
 ## Before any device installation
 
-1. Independently reproduce ARM/uClibc cross-build for the chosen feature flag combination and inspect ELF dynamic imports, hook callsites and target architecture.
+1. Four ARM/uClibc combinations have passed the local source-only compiler/ELF matrix (user-reported). **Still required before device testing:** independently inspect final patched ELF, all applied hook callsites, import resolution and target-device ABI; the matrix does not patch the stock executable.
 2. Review queue error paths and verify that a nonzero return cannot enqueue a callback before deciding to reclaim its ticket.
 3. Extend host testing to true native session setup/callback sequences (including nested reentrancy and reconnects), then collect actual device logs with the untouched stock recovery package confirmed.
 4. Reconcile the **public `main` README** separately before promoting experimental content into a release; it currently describes a historical tested package, not this branch.
