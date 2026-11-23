@@ -2,15 +2,18 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <netinet/in.h>
+#include <netinet/tcp.h>
 #include <poll.h>
 #include <pthread.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/resource.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/time.h>
+#include <sys/uio.h>
 #include <unistd.h>
 
 /* ARM AK3918AN (ak_202610081659) verified addresses */
@@ -934,10 +937,21 @@ static void shim_screen_response(void *msg) {
 }
 #endif /* AK_ENABLE_COMBINED_CLUSTER */
 
-static int writeall(int fd, const void *buf, int n) {
-    const char *p = (const char *)buf;
-    while (n > 0) {
-        ssize_t w = send(fd, p, (size_t)n, MSG_NOSIGNAL);
+static int send_frame_all(int fd, const void *hdr, size_t hlen,
+                          const void *body, size_t blen) {
+    struct iovec iov[2];
+    iov[0].iov_base = (void *)hdr;
+    iov[0].iov_len = hlen;
+    iov[1].iov_base = (void *)body;
+    iov[1].iov_len = blen;
+    int idx = 0;
+    int cnt = (blen > 0) ? 2 : 1;
+    while (idx < cnt) {
+        struct msghdr mh;
+        memset(&mh, 0, sizeof mh);
+        mh.msg_iov = &iov[idx];
+        mh.msg_iovlen = (size_t)(cnt - idx);
+        ssize_t w = sendmsg(fd, &mh, MSG_NOSIGNAL);
         if (w < 0) {
             if (errno == EINTR) continue;
             return -1;
@@ -946,8 +960,15 @@ static int writeall(int fd, const void *buf, int n) {
             errno = EPIPE;
             return -1;
         }
-        p += w;
-        n -= (int)w;
+        size_t rem = (size_t)w;
+        while (idx < cnt && rem >= iov[idx].iov_len) {
+            rem -= iov[idx].iov_len;
+            idx++;
+        }
+        if (idx < cnt && rem > 0) {
+            iov[idx].iov_base = (char *)iov[idx].iov_base + rem;
+            iov[idx].iov_len -= rem;
+        }
     }
     return 0;
 }
@@ -985,12 +1006,8 @@ static int send_to_car(struct cluster_ctx *ctx, int type, unsigned char *body,
     }
     if (type == 0) aesctr_update(ctx->aes_ctx, body, (int)len, body);
 
-    int rc = writeall(ctx->fd, hdr, 128);
-    const char *failure = "cluster header send errno";
-    if (rc == 0 && len > 0) {
-        rc = writeall(ctx->fd, body, (int)len);
-        failure = "cluster payload send errno";
-    }
+    int rc = send_frame_all(ctx->fd, hdr, 128, body, (size_t)len);
+    const char *failure = "cluster frame send errno";
     int send_error = (rc == 0) ? 0 : errno;
     pthread_mutex_unlock(&ctx->io_mu);
 
@@ -1082,6 +1099,9 @@ static void *sink_thread(void *arg) {
 
     int srv = snapshot.srv;
     int have_connid = snapshot.have_connid;
+    /* Lower VC video thread priority so real-time audio always preempts it
+     * on the single-core 400 MHz ARM926EJ-S. */
+    (void)setpriority(PRIO_PROCESS, 0, 10);
     dbg("alt sink thread up", (int)snapshot.generation);
 
     int c = accept_interruptible(srv, snapshot.generation);
@@ -1093,6 +1113,10 @@ static void *sink_thread(void *arg) {
 
     int cfl = fcntl(c, F_GETFL, 0);
     if (cfl != -1) fcntl(c, F_SETFL, cfl & ~O_NONBLOCK);
+    {
+        int one = 1;
+        setsockopt(c, IPPROTO_TCP, TCP_NODELAY, &one, sizeof one);
+    }
     dbg("alt connected", (int)snapshot.generation);
 
     if (!sink_generation_current(snapshot.generation)) {
@@ -1138,8 +1162,10 @@ static void *sink_thread(void *arg) {
     long frames = 0, pushed = 0;
     unsigned char *cfg_body = NULL;
     unsigned cfg_len = 0;
+    unsigned char *idr_body = NULL;
+    unsigned idr_len = 0;
     const char *failed_stage = NULL;
-    int cfg_sent = 0, got_idr = 0, wait_idr = 0, send_failed = 0;
+    int cfg_sent = 0, got_idr = 0, wait_idr = 0, send_failed = 0, dumped_vid = 0;
 
     for (;;) {
         if (!sink_generation_current(snapshot.generation)) {
@@ -1197,6 +1223,29 @@ static void *sink_thread(void *arg) {
                 aesctr_update(dctx, body, (int)bodylen, body);
             }
 
+            if (dec_ready && dumped_vid < 2 && bodylen >= 5u) {
+                unsigned nlen0 = ((unsigned)body[0] << 24) |
+                                 ((unsigned)body[1] << 16) |
+                                 ((unsigned)body[2] << 8) |
+                                 (unsigned)body[3];
+                dbg("alt vid nal_len", (int)nlen0);
+                dbg("alt vid nal_hdr", (int)body[4]);
+                dumped_vid++;
+            }
+
+            int cur_is_idr = (!got_idr && dec_ready) ? has_idr(body, bodylen) : 0;
+            if (!got_idr && cur_is_idr && bodylen <= 524288u) {
+                unsigned char *nidr = (unsigned char *)malloc(bodylen);
+                if (nidr) {
+                    int first_cache = (idr_body == NULL);
+                    free(idr_body);
+                    idr_body = nidr;
+                    memcpy(idr_body, body, bodylen);
+                    idr_len = bodylen;
+                    if (first_cache) dbg("alt cached idr len", (int)idr_len);
+                }
+            }
+
             if (dec_ready && cfg_body) {
                 struct cluster_ctx *ctx = cluster_ctx_acquire(snapshot.generation);
                 if (!ctx) {
@@ -1223,9 +1272,33 @@ static void *sink_thread(void *arg) {
                         continue;
                     }
                 }
-                if (!got_idr && has_idr(body, bodylen)) {
+                if (!got_idr && cur_is_idr) {
                     got_idr = 1;
+                    free(idr_body);
+                    idr_body = NULL;
+                    idr_len = 0;
                     dbg("alt idr after frames", wait_idr);
+                } else if (!got_idr && idr_body && idr_len > 0) {
+                    if (send_to_car(ctx, 0, idr_body, idr_len, &failed_stage) == 0) {
+                        pushed++;
+                        got_idr = 1;
+                        send_failed = 0;
+                        dbg("alt replayed cached idr", (int)idr_len);
+                        free(idr_body);
+                        idr_body = NULL;
+                        idr_len = 0;
+                    } else {
+                        cfg_sent = 0;
+                        got_idr = 0;
+                        wait_idr = 0;
+                        if (!send_failed) {
+                            send_failed = 1;
+                            dbg(failed_stage, errno);
+                        }
+                        cluster_ctx_release(ctx);
+                        cluster_maybe_start(snapshot.generation, 0);
+                        continue;
+                    }
                 }
                 if (!got_idr) {
                     if ((wait_idr++ % 120) == 0) {
@@ -1263,6 +1336,9 @@ static void *sink_thread(void *arg) {
                 memcpy(cfg_body, body, bodylen);
                 cfg_len = bodylen;
                 cfg_sent = 0;
+                free(idr_body);
+                idr_body = NULL;
+                idr_len = 0;
             }
             if (cfg_body) {
                 struct cluster_ctx *ctx = cluster_ctx_acquire(snapshot.generation);
@@ -1288,12 +1364,13 @@ static void *sink_thread(void *arg) {
             }
         }
 
-        if ((frames % 300) == 0) dbg("alt frames pushed", (int)pushed);
+        if (frames == 100 || (frames % 3000) == 0) dbg("alt frames pushed", (int)pushed);
     }
 
     dbg("alt stream end frames", (int)frames);
     free(body);
     free(cfg_body);
+    free(idr_body);
     close(c);
 
     secure_wipe(cckey, sizeof cckey);
@@ -1572,6 +1649,7 @@ static int connect_car_interruptible(int family, const unsigned char *sa,
         }
         if (ok) {
             if (fl != -1) fcntl(fd, F_SETFL, fl & ~O_NONBLOCK);
+            setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &one, sizeof one);
             struct timeval snd_tv;
             snd_tv.tv_sec = CAR_SEND_TIMEOUT_SEC;
             snd_tv.tv_usec = 0;
