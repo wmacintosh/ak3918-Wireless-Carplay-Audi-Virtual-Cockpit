@@ -1,0 +1,113 @@
+# Step 132 — Queued HTTP cancellation, queue destruction and reconnect safety
+
+**Status:** verified-stock static evidence + source-derived host regression + new read-only collection script. **No timeout-based reclamation, firmware packaging, flashing or device-runtime validation.**
+
+## Scope
+
+Step 131 resolved the narrow case of nonzero `HTTPClientSendMessage` returns: on the verified stock AK3918 ELF, those are pre-enqueue failures and their shim request slots can be reclaimed. **Step 132 addresses the fundamentally different case of a successful enqueue (`rc == 0`) followed by cancellation, disconnect or a missing callback.**
+
+The source material is the stock `sdDongle` ARM disassembly (SHA-256 `b2e32b82a37667500ca4f1c8266604bf28cc923ac94343907eb68c843d92e0a1`) recorded in earlier read-only extracts, and [Step 128's ownership audit](STEP128_DISASSEMBLY_AND_ADMISSION_GATE.md). It is not the OMKE MIPS executable.
+
+## Established native lifecycle
+
+1. Stock `HTTPClientSendMessage` at `0xa6974` retains the message and client and enqueues `0xa6040(msg)` on the client queue through `0xa1900`. It returns **0 for accepted/enqueued** requests; a zero return does **not** establish completion.
+2. Dispatch queue drain `0xa304c..0xa30b0` extracts a node, unlocks the queue mutex and invokes the callback; `0xa6040` appends the HTTP message into the client's message list and releases the client retain.
+3. Normal message completion `0xa4c18..0xa4c58` invokes `msg+0x904` and then releases the message. The shim callback delegates to the stock callback, including for canceled/stale requests.
+4. On the ordinary client invalidation path, `0xa6584` enqueues `0xa4f30`, which invokes the client error handler `0xa4d7c`. That handler drains the client's **message list** via message completion, including its callbacks.
+5. The *separate dispatch queue destructor* at `0xa01b8` explicitly inspects `queue+0x30` for **pending work nodes** (conditional branch at `0xa0250..0xa0294`). The previously captured excerpt logs the nonempty state and moves on to mutex/global cleanup. This is **not proof that pending queue work callbacks execute on destruction**. Nor does draining the HTTP client's message list cover a send node which has not yet been handed from the dispatch queue into that list.
+
+## Crucial unproven guarantee
+
+We cannot yet establish that *all accepted HTTP sends* eventually reach `msg+0x904` across abrupt queue destruction, process termination, concurrent client invalidation, or an abnormal disconnected state. A canceled request record stores only the original message **identity** and is not an owned CF reference; forcibly freeing the record on a clock timeout or new session could allow a late callback to be associated with an allocator-reused address.
+
+**No code now reclaims an accepted request because of elapsed time or teardown.** Record retention is intentional fail-closed behavior, not a memory leak in the native object; the shim metadata table is bounded to eight entries.
+
+## Step 132 source-derived host stress
+
+`tests/run_step132_callback_reconnect.py` compiles the actual `combo_request` helpers from `altscreen.c` and tests:
+
+- Eight accepted requests occupy all slots; a ninth request and a duplicate message identity are rejected.
+- Invalidating a session marks those records canceled but **does not free them**; a new session is not allowed to reuse them until the old callback is seen.
+- Late callbacks in reverse order free the corresponding slots and cannot start a stale-generation connection.
+- **128 repeated reconnect cycles** with timely late callbacks can reclaim/reuse slots without permanent saturation.
+- Missing callbacks across many new-session attempts deliberately keep the table full; no speculative timeout-based cleanup or pointer alias is allowed.
+- Normal accepted responses still propagate a matching valid-generation connection identity; the shim's source still calls the original stock response callback.
+
+Tests are host simulations of the current source helper functions, **not** a simulation of the native dispatch queue, HTTP error handler, Apple CarPlay or the user's physical dongle.
+
+## Step 132 read-only extraction
+
+`scripts/step132_extract_queue_cancellation.sh` checks the **exact stock binary SHA-256** and uses read-only Docker mounts to extract:
+
+| Address range | Reason |
+| --- | --- |
+| `0xa01b8..0xa0384` | Dispatch queue destructor / pending node handling |
+| `0xa304c..0xa30bc` | Serial queue pop, unlock and callback |
+| `0xa058c..0xa06e8` | Concurrent queue drain comparison |
+| `0xa4c18..0xa4c64` | HTTP message completion, callback and release |
+| `0xa4d7c..0xa4f2c` | Client error handling and message-list drain |
+| `0xa4f30..0xa4f60` | Client invalidation callback |
+| `0xa6584..0xa65bc` | Invalidation enqueue |
+| `0xa6040..0xa6078` | Send dispatch callback |
+| `0x2a74c..0x2a7a8` | Car-side global client invalidation |
+
+To create the next report on the Mac:
+
+```bash
+cd "$HOME/AK3918_GitHub"
+git pull --ff-only
+bash scripts/step132_extract_queue_cancellation.sh
+```
+
+Output: `~/Desktop/AK3918_step132_queue_cancellation.txt`. The script refuses a wrong stock SHA-256 and does not build, alter or package firmware. The report has now been uploaded, reviewed and archived as [pinned Step 132 ARM evidence](../evidence/AK3918_step132_queue_cancellation.txt); CI checks its critical opcodes through `tests/test_step132_native_report.py`.
+
+## Local extraction validation — user-reported
+
+After fast-forwarding the experimental branch from `263596b` to `02b7a0e`, the user ran `bash scripts/step132_extract_queue_cancellation.sh` on their Mac. The command reported:
+
+```
+PASS: Step 132 verified-stock queue and cancellation report at /Users/wademacintosh/Desktop/AK3918_step132_queue_cancellation.txt
+No firmware was modified, packaged, installed or flashed.
+```
+
+The script checks the original stock ELF SHA-256 and ensures all required ARM routine-entry addresses were captured. **This confirms successful extraction only**: the complete report has not yet been supplied for review, so it does **not** establish whether abandoned pending queue nodes receive `msg+0x904` or can be discarded without callback delivery.
+
+The source-derived reconnect and read-only script checks passed [GitHub Actions run 44978247878](https://github.com/wmacintosh/ak3918-Wireless-Carplay-Audi-Virtual-Cockpit/actions/runs/44978247878) at commit `02b7a0e`. The report itself remains the next evidence input.
+
+## Review of uploaded Step 132 ARM report — completed
+
+The user uploaded `AK3918_step132_queue_cancellation.txt` (501 lines; verified-stock ELF checksum enforced by extraction). The file contains nine disassembly ranges requested in Step 132. The following instructions were directly inspected, rather than inferred from host simulation.
+
+| Address | Verified native instruction | What it establishes |
+| --- | --- | --- |
+| `0xa0250..0xa0258` | `ldr r3,[r4,#0x30]`; `cmp r3,#0`; conditional `beq 0xa0294` | The queue destructor explicitly checks for pending nodes |
+| `0xa0290` | `bl 0x9ec74` on the nonempty branch | The nonempty queue triggers the existing diagnostic/reporting routine, not a per-node callback |
+| `0xa0294..0xa033c` | Mutex/global cleanup and tail branch to `0xa0190` | No queue-node iteration or `blx` invocation appears in the queue destructor |
+| `0xa304c..0xa3094` | Pop queue node, unlock mutex at `0xa3080`, `blx r3` at `0xa308c`, free node at `0xa3094` | **Normal dispatch** invokes the queued callback before disposing of the work node |
+| `0xa0660..0xa0670` | `blx r3` and work-node `free` | Concurrent drain likewise invokes the queued callback |
+| `0xa4eac..0xa4ec4` | Loop over `client+0x49c` via `bl 0xa4c18` | HTTP error handling drains **already transferred messages** in the client's message list |
+| `0xa4c34..0xa4c58` | Load `msg+0x904`, `blx r3` at `0xa4c4c`, `CFRelease(msg)` at `0xa4c58` | A normally completed or canceled **listed** message receives its callback while retained |
+| `0xa6584..0xa65a4` | `CFRetain(client)` at `0xa658c`; branch to queue enqueue `0xa1900` | HTTP client invalidation itself uses the asynchronous dispatch queue |
+| `0x2a78c..0x2a79c` | Call native client invalidation, release global client, then clear global pointer | Car-side shutdown normally submits the client's invalidation work |
+
+**Resolution of the Step 132 question:** the queue destructor contains **no mechanism to execute pending-node callbacks** when it detects an unexpected nonempty queue. It follows a diagnostics/cleanup path. By contrast, normal dispatch and HTTP client error handling invoke callbacks. The disassembly still does **not prove that normal shutdown can reach the queue destructor with pending nodes**, because queuing and client reference lifetime ordinarily maintain ordering. It also cannot prove that every accepted message callback is delivered during abrupt failure, shutdown or process death.
+
+**Safety decision:** leave accepted-request tracking records fail-closed until their matching response callback; do not clear records based on session teardown, elapsed time, queue invalidation requests or an assumption that destructor diagnostics imply completion. A pending dispatch work node may not yet be in `client+0x49c` and is therefore not covered by the error handler's message-list drain. No native firmware change or speculative callback reclamation is justified by this evidence.
+
+## Reproducible evidence gate
+
+The uploaded **501-line** report is preserved in `evidence/AK3918_step132_queue_cancellation.txt`. New test `tests/test_step132_native_report.py` reads the actual captured ARM instructions and checks the exact opcodes at the destructor pending-list branch, normal dispatch `blx` and node free, HTTP completion callback/release, error-handler drain, and client invalidation enqueue. The test additionally ensures the destructor has no per-node indirect callback call and the shim still leaves canceled accepted-request records in place.
+
+These checks guard the correspondence between the **specific stock ARM disassembly** and the documented safety decision. They do **not** simulate hardware, prove normal client invalidation always finishes, or authorize timeout reclamation.
+
+## Later Step 133 refinement — native queue reference ownership
+
+The [Step 133 verified-stock audit](STEP133_QUEUE_OWNERSHIP_AND_FINAL_RELEASE.md) proves that a successfully **inserted** work node is protected by a queue reference taken on the empty-to-nonempty transition (`0xa19ec`) and released by the serial worker after its final callback (`0xa30a4`). The HTTP client separately retains its queue at initialization (`0xa64a8`).
+
+However, `dispatch_async_f` can fail to allocate its 12-byte node (`calloc` at `0xa1980`) and return without enqueueing work. The outer HTTP sender unconditionally returns zero after the dispatch attempt. Consequently, Step 132's use of "successfully queued" for `http_send == 0` should be interpreted as **accepted by the outer HTTP send function, not proven inserted into the queue**. Callback-only ticket reclamation remains the appropriate fail-closed policy.
+
+## Deployment decision
+
+The Step 129/130/131 source/ELF checks are distinct from live firmware validation. The combined stream-111 feature remains experimental, disabled by default; the optional test archive is not authorized for installation as a consequence of these findings. No change to `main`, stock recovery archive, or historical firmware is required.
+
+**Next evidence gate:** establish whether the dispatch queue's pending work can be destroyed without running `0xa6040`, and how client invalidation is sequenced relative to that queue drain. Do not implement global ticket resets, timeouts or manual CF releases without a proven guarantee.

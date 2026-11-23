@@ -1,0 +1,501 @@
+
+===== DISPATCH QUEUE DESTRUCTOR pending node handling =====
+
+/repo/stock_analysis/sdDongle:     file format elf32-littlearm
+
+
+Disassembly of section .text:
+
+000a01b8 <__dispatch_queue_free@@Base>:
+   a01b8:	e92d401f 	push	{r0, r1, r2, r3, r4, lr}
+   a01bc:	e2504000 	subs	r4, r0, #0
+   a01c0:	0a000003 	beq	a01d4 <__dispatch_queue_free@@Base+0x1c>
+   a01c4:	e5942000 	ldr	r2, [r4]
+   a01c8:	e59f3170 	ldr	r3, [pc, #368]	@ a0340 <__dispatch_queue_free@@Base+0x188>
+   a01cc:	e1520003 	cmp	r2, r3
+   a01d0:	0a00000d 	beq	a020c <__dispatch_queue_free@@Base+0x54>
+   a01d4:	e59f3168 	ldr	r3, [pc, #360]	@ a0344 <__dispatch_queue_free@@Base+0x18c>
+   a01d8:	e59f2168 	ldr	r2, [pc, #360]	@ a0348 <__dispatch_queue_free@@Base+0x190>
+   a01dc:	e08f3003 	add	r3, pc, r3
+   a01e0:	e2833055 	add	r3, r3, #85	@ 0x55
+   a01e4:	e58d3004 	str	r3, [sp, #4]
+   a01e8:	e3a03d19 	mov	r3, #1600	@ 0x640
+   a01ec:	e58d3000 	str	r3, [sp]
+   a01f0:	e59f3154 	ldr	r3, [pc, #340]	@ a034c <__dispatch_queue_free@@Base+0x194>
+   a01f4:	e3a01000 	mov	r1, #0
+   a01f8:	e58d1008 	str	r1, [sp, #8]
+   a01fc:	e08f3003 	add	r3, pc, r3
+   a0200:	e08f2002 	add	r2, pc, r2
+   a0204:	e1a00001 	mov	r0, r1
+   a0208:	ebfffa99 	bl	9ec74 <_IPCAgent_ReadHandler@@Base+0x112c>
+   a020c:	e5943004 	ldr	r3, [r4, #4]
+   a0210:	e3530000 	cmp	r3, #0
+   a0214:	0a00000d 	beq	a0250 <__dispatch_queue_free@@Base+0x98>
+   a0218:	e59f3130 	ldr	r3, [pc, #304]	@ a0350 <__dispatch_queue_free@@Base+0x198>
+   a021c:	e59f2130 	ldr	r2, [pc, #304]	@ a0354 <__dispatch_queue_free@@Base+0x19c>
+   a0220:	e08f3003 	add	r3, pc, r3
+   a0224:	e2833055 	add	r3, r3, #85	@ 0x55
+   a0228:	e58d3004 	str	r3, [sp, #4]
+   a022c:	e59f3124 	ldr	r3, [pc, #292]	@ a0358 <__dispatch_queue_free@@Base+0x1a0>
+   a0230:	e3a01000 	mov	r1, #0
+   a0234:	e58d3000 	str	r3, [sp]
+   a0238:	e59f311c 	ldr	r3, [pc, #284]	@ a035c <__dispatch_queue_free@@Base+0x1a4>
+   a023c:	e58d1008 	str	r1, [sp, #8]
+   a0240:	e08f3003 	add	r3, pc, r3
+   a0244:	e08f2002 	add	r2, pc, r2
+   a0248:	e1a00001 	mov	r0, r1
+   a024c:	ebfffa88 	bl	9ec74 <_IPCAgent_ReadHandler@@Base+0x112c>
+   a0250:	e5943030 	ldr	r3, [r4, #48]	@ 0x30
+   a0254:	e3530000 	cmp	r3, #0
+   a0258:	0a00000d 	beq	a0294 <__dispatch_queue_free@@Base+0xdc>
+   a025c:	e59f30fc 	ldr	r3, [pc, #252]	@ a0360 <__dispatch_queue_free@@Base+0x1a8>
+   a0260:	e59f20fc 	ldr	r2, [pc, #252]	@ a0364 <__dispatch_queue_free@@Base+0x1ac>
+   a0264:	e08f3003 	add	r3, pc, r3
+   a0268:	e2833055 	add	r3, r3, #85	@ 0x55
+   a026c:	e58d3004 	str	r3, [sp, #4]
+   a0270:	e59f30f0 	ldr	r3, [pc, #240]	@ a0368 <__dispatch_queue_free@@Base+0x1b0>
+   a0274:	e3a01000 	mov	r1, #0
+   a0278:	e58d3000 	str	r3, [sp]
+   a027c:	e59f30e8 	ldr	r3, [pc, #232]	@ a036c <__dispatch_queue_free@@Base+0x1b4>
+   a0280:	e58d1008 	str	r1, [sp, #8]
+   a0284:	e08f3003 	add	r3, pc, r3
+   a0288:	e08f2002 	add	r2, pc, r2
+   a028c:	e1a00001 	mov	r0, r1
+   a0290:	ebfffa77 	bl	9ec74 <_IPCAgent_ReadHandler@@Base+0x112c>
+   a0294:	e594002c 	ldr	r0, [r4, #44]	@ 0x2c
+   a0298:	ebfde12e 	bl	18758 <pthread_mutex_lock@plt>
+   a029c:	e59f30cc 	ldr	r3, [pc, #204]	@ a0370 <__dispatch_queue_free@@Base+0x1b8>
+   a02a0:	e08f3003 	add	r3, pc, r3
+   a02a4:	e5932024 	ldr	r2, [r3, #36]	@ 0x24
+   a02a8:	e1540002 	cmp	r4, r2
+   a02ac:	1a000007 	bne	a02d0 <__dispatch_queue_free@@Base+0x118>
+   a02b0:	e3a02001 	mov	r2, #1
+   a02b4:	e593002c 	ldr	r0, [r3, #44]	@ 0x2c
+   a02b8:	e5c32028 	strb	r2, [r3, #40]	@ 0x28
+   a02bc:	ebfddf03 	bl	17ed0 <pthread_cond_signal@plt>
+   a02c0:	e594002c 	ldr	r0, [r4, #44]	@ 0x2c
+   a02c4:	e28dd010 	add	sp, sp, #16
+   a02c8:	e8bd4010 	pop	{r4, lr}
+   a02cc:	eafde085 	b	184e8 <pthread_mutex_unlock@plt>
+   a02d0:	e594002c 	ldr	r0, [r4, #44]	@ 0x2c
+   a02d4:	ebfde083 	bl	184e8 <pthread_mutex_unlock@plt>
+   a02d8:	e594002c 	ldr	r0, [r4, #44]	@ 0x2c
+   a02dc:	e3500000 	cmp	r0, #0
+   a02e0:	0a000010 	beq	a0328 <__dispatch_queue_free@@Base+0x170>
+   a02e4:	ebfde175 	bl	188c0 <pthread_mutex_destroy@plt>
+   a02e8:	e2501000 	subs	r1, r0, #0
+   a02ec:	0a00000b 	beq	a0320 <__dispatch_queue_free@@Base+0x168>
+   a02f0:	e59f307c 	ldr	r3, [pc, #124]	@ a0374 <__dispatch_queue_free@@Base+0x1bc>
+   a02f4:	e3a02000 	mov	r2, #0
+   a02f8:	e08f3003 	add	r3, pc, r3
+   a02fc:	e2833055 	add	r3, r3, #85	@ 0x55
+   a0300:	e58d3004 	str	r3, [sp, #4]
+   a0304:	e59f306c 	ldr	r3, [pc, #108]	@ a0378 <__dispatch_queue_free@@Base+0x1c0>
+   a0308:	e58d2008 	str	r2, [sp, #8]
+   a030c:	e58d3000 	str	r3, [sp]
+   a0310:	e59f3064 	ldr	r3, [pc, #100]	@ a037c <__dispatch_queue_free@@Base+0x1c4>
+   a0314:	e1a00002 	mov	r0, r2
+   a0318:	e08f3003 	add	r3, pc, r3
+   a031c:	ebfffa54 	bl	9ec74 <_IPCAgent_ReadHandler@@Base+0x112c>
+   a0320:	e3a03000 	mov	r3, #0
+   a0324:	e584302c 	str	r3, [r4, #44]	@ 0x2c
+   a0328:	e59f3050 	ldr	r3, [pc, #80]	@ a0380 <__dispatch_queue_free@@Base+0x1c8>
+   a032c:	e1a00004 	mov	r0, r4
+   a0330:	e5843000 	str	r3, [r4]
+   a0334:	e28dd010 	add	sp, sp, #16
+   a0338:	e8bd4010 	pop	{r4, lr}
+   a033c:	eaffff93 	b	a0190 <__LibDispatch_SelectHandleTimerEvent@@Base+0x304>
+   a0340:	64717565 	ldrbtvs	r7, [r1], #-1381	@ 0xfffffa9b
+   a0344:	00069942 	andeq	r9, r6, r2, asr #18
+   a0348:	00069ec9 	andeq	r9, r6, r9, asr #29
+   a034c:	00069d6d 	andeq	r9, r6, sp, ror #26
+   a0350:	000698fe 	strdeq	r9, [r6], -lr
+   a0354:	00069ec0 	andeq	r9, r6, r0, asr #29
+   a0358:	00000641 	andeq	r0, r0, r1, asr #12
+   a035c:	00069d29 	andeq	r9, r6, r9, lsr #26
+   a0360:	000698ba 			@ <UNDEFINED> instruction: 0x000698ba
+   a0364:	00069e96 	muleq	r6, r6, lr
+   a0368:	00000642 	andeq	r0, r0, r2, asr #12
+   a036c:	00069ce5 	andeq	r9, r6, r5, ror #25
+   a0370:	0009b648 	andeq	fp, r9, r8, asr #12
+   a0374:	00069826 	andeq	r9, r6, r6, lsr #16
+   a0378:	00000659 	andeq	r0, r0, r9, asr r6
+   a037c:	00069c51 	andeq	r9, r6, r1, asr ip
+   a0380:	44515545 	ldrbmi	r5, [r1], #-1349	@ 0xfffffabb
+
+===== DISPATCH SERIAL QUEUE POP unlock and callback =====
+
+/repo/stock_analysis/sdDongle:     file format elf32-littlearm
+
+
+Disassembly of section .text:
+
+000a304c <__dispatch_source_free@@Base+0x2964>:
+   a304c:	e5945030 	ldr	r5, [r4, #48]	@ 0x30
+   a3050:	e3550000 	cmp	r5, #0
+   a3054:	0a000016 	beq	a30b4 <__dispatch_source_free@@Base+0x29cc>
+   a3058:	e594303c 	ldr	r3, [r4, #60]	@ 0x3c
+   a305c:	e3530000 	cmp	r3, #0
+   a3060:	ca000013 	bgt	a30b4 <__dispatch_source_free@@Base+0x29cc>
+   a3064:	e5953000 	ldr	r3, [r5]
+   a3068:	e594002c 	ldr	r0, [r4, #44]	@ 0x2c
+   a306c:	e3530000 	cmp	r3, #0
+   a3070:	05847034 	streq	r7, [r4, #52]	@ 0x34
+   a3074:	e5843030 	str	r3, [r4, #48]	@ 0x30
+   a3078:	03a06001 	moveq	r6, #1
+   a307c:	13a06000 	movne	r6, #0
+   a3080:	ebfdd518 	bl	184e8 <pthread_mutex_unlock@plt>
+   a3084:	e5953004 	ldr	r3, [r5, #4]
+   a3088:	e5950008 	ldr	r0, [r5, #8]
+   a308c:	e12fff33 	blx	r3
+   a3090:	e1a00005 	mov	r0, r5
+   a3094:	ebfdd3e4 	bl	1802c <free@plt>
+   a3098:	e3560000 	cmp	r6, #0
+   a309c:	0a000001 	beq	a30a8 <__dispatch_source_free@@Base+0x29c0>
+   a30a0:	e1a00004 	mov	r0, r4
+   a30a4:	ebfff504 	bl	a04bc <__dispatch_semaphore_free@@Base+0x138>
+   a30a8:	e594002c 	ldr	r0, [r4, #44]	@ 0x2c
+   a30ac:	ebfdd5a9 	bl	18758 <pthread_mutex_lock@plt>
+   a30b0:	eaffffe5 	b	a304c <__dispatch_source_free@@Base+0x2964>
+   a30b4:	e28dd014 	add	sp, sp, #20
+   a30b8:	e8bd80f0 	pop	{r4, r5, r6, r7, pc}
+
+===== DISPATCH CONCURRENT QUEUE DRAIN comparison =====
+
+/repo/stock_analysis/sdDongle:     file format elf32-littlearm
+
+
+Disassembly of section .text:
+
+000a058c <__dispatch_queue_concurrent_drain@@Base>:
+   a058c:	e92d47ff 	push	{r0, r1, r2, r3, r4, r5, r6, r7, r8, r9, sl, lr}
+   a0590:	e59f8134 	ldr	r8, [pc, #308]	@ a06cc <__dispatch_queue_concurrent_drain@@Base+0x140>
+   a0594:	e59fa134 	ldr	sl, [pc, #308]	@ a06d0 <__dispatch_queue_concurrent_drain@@Base+0x144>
+   a0598:	e08f8008 	add	r8, pc, r8
+   a059c:	e3a05003 	mov	r5, #3
+   a05a0:	e3a07000 	mov	r7, #0
+   a05a4:	e08fa00a 	add	sl, pc, sl
+   a05a8:	e28880a6 	add	r8, r8, #166	@ 0xa6
+   a05ac:	e2455001 	sub	r5, r5, #1
+   a05b0:	e08a3105 	add	r3, sl, r5, lsl #2
+   a05b4:	e5934030 	ldr	r4, [r3, #48]	@ 0x30
+   a05b8:	e3540000 	cmp	r4, #0
+   a05bc:	0a000003 	beq	a05d0 <__dispatch_queue_concurrent_drain@@Base+0x44>
+   a05c0:	e5942000 	ldr	r2, [r4]
+   a05c4:	e59f3108 	ldr	r3, [pc, #264]	@ a06d4 <__dispatch_queue_concurrent_drain@@Base+0x148>
+   a05c8:	e1520003 	cmp	r2, r3
+   a05cc:	0a000038 	beq	a06b4 <__dispatch_queue_concurrent_drain@@Base+0x128>
+   a05d0:	e59f3100 	ldr	r3, [pc, #256]	@ a06d8 <__dispatch_queue_concurrent_drain@@Base+0x14c>
+   a05d4:	e59f2100 	ldr	r2, [pc, #256]	@ a06dc <__dispatch_queue_concurrent_drain@@Base+0x150>
+   a05d8:	e58d3000 	str	r3, [sp]
+   a05dc:	e59f30fc 	ldr	r3, [pc, #252]	@ a06e0 <__dispatch_queue_concurrent_drain@@Base+0x154>
+   a05e0:	e3a01000 	mov	r1, #0
+   a05e4:	e58d1008 	str	r1, [sp, #8]
+   a05e8:	e58d8004 	str	r8, [sp, #4]
+   a05ec:	e08f3003 	add	r3, pc, r3
+   a05f0:	e08f2002 	add	r2, pc, r2
+   a05f4:	e1a00001 	mov	r0, r1
+   a05f8:	ebfff99d 	bl	9ec74 <_IPCAgent_ReadHandler@@Base+0x112c>
+   a05fc:	e594002c 	ldr	r0, [r4, #44]	@ 0x2c
+   a0600:	ebfde054 	bl	18758 <pthread_mutex_lock@plt>
+   a0604:	e5946030 	ldr	r6, [r4, #48]	@ 0x30
+   a0608:	e3560000 	cmp	r6, #0
+   a060c:	1a000001 	bne	a0618 <__dispatch_queue_concurrent_drain@@Base+0x8c>
+   a0610:	e3a09000 	mov	r9, #0
+   a0614:	ea000006 	b	a0634 <__dispatch_queue_concurrent_drain@@Base+0xa8>
+   a0618:	e5963000 	ldr	r3, [r6]
+   a061c:	e3530000 	cmp	r3, #0
+   a0620:	e5843030 	str	r3, [r4, #48]	@ 0x30
+   a0624:	1afffff9 	bne	a0610 <__dispatch_queue_concurrent_drain@@Base+0x84>
+   a0628:	e2843030 	add	r3, r4, #48	@ 0x30
+   a062c:	e3a09001 	mov	r9, #1
+   a0630:	e5843034 	str	r3, [r4, #52]	@ 0x34
+   a0634:	e594002c 	ldr	r0, [r4, #44]	@ 0x2c
+   a0638:	ebfddfaa 	bl	184e8 <pthread_mutex_unlock@plt>
+   a063c:	e3560000 	cmp	r6, #0
+   a0640:	0a000010 	beq	a0688 <__dispatch_queue_concurrent_drain@@Base+0xfc>
+   a0644:	e1540007 	cmp	r4, r7
+   a0648:	0a000004 	beq	a0660 <__dispatch_queue_concurrent_drain@@Base+0xd4>
+   a064c:	e59f3090 	ldr	r3, [pc, #144]	@ a06e4 <__dispatch_queue_concurrent_drain@@Base+0x158>
+   a0650:	e1a01004 	mov	r1, r4
+   a0654:	e08f3003 	add	r3, pc, r3
+   a0658:	e593003c 	ldr	r0, [r3, #60]	@ 0x3c
+   a065c:	ebfde25c 	bl	18fd4 <pthread_setspecific@plt>
+   a0660:	e5963004 	ldr	r3, [r6, #4]
+   a0664:	e5960008 	ldr	r0, [r6, #8]
+   a0668:	e12fff33 	blx	r3
+   a066c:	e1a00006 	mov	r0, r6
+   a0670:	ebfdde6d 	bl	1802c <free@plt>
+   a0674:	e3590000 	cmp	r9, #0
+   a0678:	03a05003 	moveq	r5, #3
+   a067c:	1a000004 	bne	a0694 <__dispatch_queue_concurrent_drain@@Base+0x108>
+   a0680:	e1a07004 	mov	r7, r4
+   a0684:	eaffffc8 	b	a05ac <__dispatch_queue_concurrent_drain@@Base+0x20>
+   a0688:	e3590000 	cmp	r9, #0
+   a068c:	0a000004 	beq	a06a4 <__dispatch_queue_concurrent_drain@@Base+0x118>
+   a0690:	ea000001 	b	a069c <__dispatch_queue_concurrent_drain@@Base+0x110>
+   a0694:	e1a07004 	mov	r7, r4
+   a0698:	e3a05003 	mov	r5, #3
+   a069c:	e1a00004 	mov	r0, r4
+   a06a0:	ebffff85 	bl	a04bc <__dispatch_semaphore_free@@Base+0x138>
+   a06a4:	e3550000 	cmp	r5, #0
+   a06a8:	0a000005 	beq	a06c4 <__dispatch_queue_concurrent_drain@@Base+0x138>
+   a06ac:	e1a04007 	mov	r4, r7
+   a06b0:	eafffff2 	b	a0680 <__dispatch_queue_concurrent_drain@@Base+0xf4>
+   a06b4:	e5943004 	ldr	r3, [r4, #4]
+   a06b8:	e3530000 	cmp	r3, #0
+   a06bc:	caffffce 	bgt	a05fc <__dispatch_queue_concurrent_drain@@Base+0x70>
+   a06c0:	eaffffc2 	b	a05d0 <__dispatch_queue_concurrent_drain@@Base+0x44>
+   a06c4:	e28dd010 	add	sp, sp, #16
+   a06c8:	e8bd87f0 	pop	{r4, r5, r6, r7, r8, r9, sl, pc}
+   a06cc:	00069586 	andeq	r9, r6, r6, lsl #11
+   a06d0:	0009b344 	andeq	fp, r9, r4, asr #6
+   a06d4:	64717565 	ldrbtvs	r7, [r1], #-1381	@ 0xfffffa9b
+   a06d8:	000006b4 			@ <UNDEFINED> instruction: 0x000006b4
+   a06dc:	00069b58 	andeq	r9, r6, r8, asr fp
+   a06e0:	0006997d 	andeq	r9, r6, sp, ror r9
+   a06e4:	0009b294 	muleq	r9, r4, r2
+
+===== HTTP MESSAGE COMPLETE callback then message release =====
+
+/repo/stock_analysis/sdDongle:     file format elf32-littlearm
+
+
+Disassembly of section .text:
+
+000a4c18 <__LibDispatch_SelectDrain@@Base+0x86c>:
+   a4c18:	e5913008 	ldr	r3, [r1, #8]
+   a4c1c:	e92d4010 	push	{r4, lr}
+   a4c20:	e3530000 	cmp	r3, #0
+   a4c24:	e580349c 	str	r3, [r0, #1180]	@ 0x49c
+   a4c28:	02803e49 	addeq	r3, r0, #1168	@ 0x490
+   a4c2c:	0283300c 	addeq	r3, r3, #12
+   a4c30:	058034a0 	streq	r3, [r0, #1184]	@ 0x4a0
+   a4c34:	e5913904 	ldr	r3, [r1, #2308]	@ 0x904
+   a4c38:	e1a04001 	mov	r4, r1
+   a4c3c:	e3530000 	cmp	r3, #0
+   a4c40:	e58128e8 	str	r2, [r1, #2280]	@ 0x8e8
+   a4c44:	0a000001 	beq	a4c50 <__LibDispatch_SelectDrain@@Base+0x8a4>
+   a4c48:	e1a00001 	mov	r0, r1
+   a4c4c:	e12fff33 	blx	r3
+   a4c50:	e1a00004 	mov	r0, r4
+   a4c54:	e8bd4010 	pop	{r4, lr}
+   a4c58:	eaff7806 	b	82c78 <AirPlayReceiverServerPlatformCopyProperty@@Base+0x6ddc>
+   a4c5c:	eaff7805 	b	82c78 <AirPlayReceiverServerPlatformCopyProperty@@Base+0x6ddc>
+   a4c60:	e5901048 	ldr	r1, [r0, #72]	@ 0x48
+
+===== HTTP CLIENT ERROR HANDLER pending message drain =====
+
+/repo/stock_analysis/sdDongle:     file format elf32-littlearm
+
+
+Disassembly of section .text:
+
+000a4d7c <__LibDispatch_SelectDrain@@Base+0x9d0>:
+   a4d7c:	e59f31a0 	ldr	r3, [pc, #416]	@ a4f24 <__LibDispatch_SelectDrain@@Base+0xb78>
+   a4d80:	e92d4037 	push	{r0, r1, r2, r4, r5, lr}
+   a4d84:	e3510000 	cmp	r1, #0
+   a4d88:	11510003 	cmpne	r1, r3
+   a4d8c:	e1a05001 	mov	r5, r1
+   a4d90:	e243301d 	sub	r3, r3, #29
+   a4d94:	13a01001 	movne	r1, #1
+   a4d98:	03a01000 	moveq	r1, #0
+   a4d9c:	e1550003 	cmp	r5, r3
+   a4da0:	03a01000 	moveq	r1, #0
+   a4da4:	12011001 	andne	r1, r1, #1
+   a4da8:	e3510000 	cmp	r1, #0
+   a4dac:	e1a04000 	mov	r4, r0
+   a4db0:	0a000009 	beq	a4ddc <__LibDispatch_SelectDrain@@Base+0xa30>
+   a4db4:	e5900024 	ldr	r0, [r0, #36]	@ 0x24
+   a4db8:	e5903000 	ldr	r3, [r0]
+   a4dbc:	e3530028 	cmp	r3, #40	@ 0x28
+   a4dc0:	ca000005 	bgt	a4ddc <__LibDispatch_SelectDrain@@Base+0xa30>
+   a4dc4:	e3730001 	cmn	r3, #1
+   a4dc8:	1a000047 	bne	a4eec <__LibDispatch_SelectDrain@@Base+0xb40>
+   a4dcc:	e3a01028 	mov	r1, #40	@ 0x28
+   a4dd0:	eb002805 	bl	aedec <_HTTPServerControl@@Base+0x6c84>
+   a4dd4:	e3500000 	cmp	r0, #0
+   a4dd8:	1a000043 	bne	a4eec <__LibDispatch_SelectDrain@@Base+0xb40>
+   a4ddc:	e5940040 	ldr	r0, [r4, #64]	@ 0x40
+   a4de0:	e3a03009 	mov	r3, #9
+   a4de4:	e3500000 	cmp	r0, #0
+   a4de8:	e584303c 	str	r3, [r4, #60]	@ 0x3c
+   a4dec:	0a000002 	beq	a4dfc <__LibDispatch_SelectDrain@@Base+0xa50>
+   a4df0:	eb00dcbe 	bl	dc0f0 <strlcpy@@Base+0x1205c>
+   a4df4:	e3a03000 	mov	r3, #0
+   a4df8:	e5843040 	str	r3, [r4, #64]	@ 0x40
+   a4dfc:	e594004c 	ldr	r0, [r4, #76]	@ 0x4c
+   a4e00:	e3500000 	cmp	r0, #0
+   a4e04:	0a00000b 	beq	a4e38 <__LibDispatch_SelectDrain@@Base+0xa8c>
+   a4e08:	ebfffb5d 	bl	a3b84 <__LibDispatch_SelectHandleReadWriteEvent@@Base+0x74>
+   a4e0c:	e5d43050 	ldrb	r3, [r4, #80]	@ 0x50
+   a4e10:	e3530000 	cmp	r3, #0
+   a4e14:	0a000003 	beq	a4e28 <__LibDispatch_SelectDrain@@Base+0xa7c>
+   a4e18:	e594004c 	ldr	r0, [r4, #76]	@ 0x4c
+   a4e1c:	ebfffa68 	bl	a37c4 <__LibDispatchCF_SourcePerform@@Base+0x5f8>
+   a4e20:	e3a03000 	mov	r3, #0
+   a4e24:	e5c43050 	strb	r3, [r4, #80]	@ 0x50
+   a4e28:	e594004c 	ldr	r0, [r4, #76]	@ 0x4c
+   a4e2c:	ebffeda2 	bl	a04bc <__dispatch_semaphore_free@@Base+0x138>
+   a4e30:	e3a03000 	mov	r3, #0
+   a4e34:	e584304c 	str	r3, [r4, #76]	@ 0x4c
+   a4e38:	e5940054 	ldr	r0, [r4, #84]	@ 0x54
+   a4e3c:	e3500000 	cmp	r0, #0
+   a4e40:	0a00000b 	beq	a4e74 <__LibDispatch_SelectDrain@@Base+0xac8>
+   a4e44:	ebfffb4e 	bl	a3b84 <__LibDispatch_SelectHandleReadWriteEvent@@Base+0x74>
+   a4e48:	e5d43058 	ldrb	r3, [r4, #88]	@ 0x58
+   a4e4c:	e3530000 	cmp	r3, #0
+   a4e50:	0a000003 	beq	a4e64 <__LibDispatch_SelectDrain@@Base+0xab8>
+   a4e54:	e5940054 	ldr	r0, [r4, #84]	@ 0x54
+   a4e58:	ebfffa59 	bl	a37c4 <__LibDispatchCF_SourcePerform@@Base+0x5f8>
+   a4e5c:	e3a03000 	mov	r3, #0
+   a4e60:	e5c43058 	strb	r3, [r4, #88]	@ 0x58
+   a4e64:	e5940054 	ldr	r0, [r4, #84]	@ 0x54
+   a4e68:	ebffed93 	bl	a04bc <__dispatch_semaphore_free@@Base+0x138>
+   a4e6c:	e3a03000 	mov	r3, #0
+   a4e70:	e5843054 	str	r3, [r4, #84]	@ 0x54
+   a4e74:	e594005c 	ldr	r0, [r4, #92]	@ 0x5c
+   a4e78:	e3500000 	cmp	r0, #0
+   a4e7c:	0a000004 	beq	a4e94 <__LibDispatch_SelectDrain@@Base+0xae8>
+   a4e80:	ebfffb3f 	bl	a3b84 <__LibDispatch_SelectHandleReadWriteEvent@@Base+0x74>
+   a4e84:	e594005c 	ldr	r0, [r4, #92]	@ 0x5c
+   a4e88:	ebffed8b 	bl	a04bc <__dispatch_semaphore_free@@Base+0x138>
+   a4e8c:	e3a03000 	mov	r3, #0
+   a4e90:	e584305c 	str	r3, [r4, #92]	@ 0x5c
+   a4e94:	e5940464 	ldr	r0, [r4, #1124]	@ 0x464
+   a4e98:	e3500000 	cmp	r0, #0
+   a4e9c:	0a000002 	beq	a4eac <__LibDispatch_SelectDrain@@Base+0xb00>
+   a4ea0:	ebff7774 	bl	82c78 <AirPlayReceiverServerPlatformCopyProperty@@Base+0x6ddc>
+   a4ea4:	e3a03000 	mov	r3, #0
+   a4ea8:	e5843464 	str	r3, [r4, #1124]	@ 0x464
+   a4eac:	e594149c 	ldr	r1, [r4, #1180]	@ 0x49c
+   a4eb0:	e3510000 	cmp	r1, #0
+   a4eb4:	0a000003 	beq	a4ec8 <__LibDispatch_SelectDrain@@Base+0xb1c>
+   a4eb8:	e1a02005 	mov	r2, r5
+   a4ebc:	e1a00004 	mov	r0, r4
+   a4ec0:	ebffff54 	bl	a4c18 <__LibDispatch_SelectDrain@@Base+0x86c>
+   a4ec4:	eafffff8 	b	a4eac <__LibDispatch_SelectDrain@@Base+0xb00>
+   a4ec8:	e5943010 	ldr	r3, [r4, #16]
+   a4ecc:	e5841010 	str	r1, [r4, #16]
+   a4ed0:	e3530000 	cmp	r3, #0
+   a4ed4:	0a000010 	beq	a4f1c <__LibDispatch_SelectDrain@@Base+0xb70>
+   a4ed8:	e594100c 	ldr	r1, [r4, #12]
+   a4edc:	e1a00005 	mov	r0, r5
+   a4ee0:	e28dd00c 	add	sp, sp, #12
+   a4ee4:	e8bd4030 	pop	{r4, r5, lr}
+   a4ee8:	e12fff13 	bx	r3
+   a4eec:	e5943018 	ldr	r3, [r4, #24]
+   a4ef0:	e59f1030 	ldr	r1, [pc, #48]	@ a4f28 <__LibDispatch_SelectDrain@@Base+0xb7c>
+   a4ef4:	e58d3000 	str	r3, [sp]
+   a4ef8:	e59f302c 	ldr	r3, [pc, #44]	@ a4f2c <__LibDispatch_SelectDrain@@Base+0xb80>
+   a4efc:	e08f1001 	add	r1, pc, r1
+   a4f00:	e58d5004 	str	r5, [sp, #4]
+   a4f04:	e08f3003 	add	r3, pc, r3
+   a4f08:	e3a02028 	mov	r2, #40	@ 0x28
+   a4f0c:	e281102d 	add	r1, r1, #45	@ 0x2d
+   a4f10:	e5940024 	ldr	r0, [r4, #36]	@ 0x24
+   a4f14:	eb002927 	bl	af3b8 <_HTTPServerControl@@Base+0x7250>
+   a4f18:	eaffffaf 	b	a4ddc <__LibDispatch_SelectDrain@@Base+0xa30>
+   a4f1c:	e28dd00c 	add	sp, sp, #12
+   a4f20:	e8bd8030 	pop	{r4, r5, pc}
+   a4f24:	ffffe5bd 			@ <UNDEFINED> instruction: 0xffffe5bd
+   a4f28:	00065869 	andeq	r5, r6, r9, ror #16
+
+===== HTTP CLIENT INVALIDATION callback and release =====
+
+/repo/stock_analysis/sdDongle:     file format elf32-littlearm
+
+
+Disassembly of section .text:
+
+000a4f30 <__LibDispatch_SelectDrain@@Base+0xb84>:
+   a4f30:	e92d4010 	push	{r4, lr}
+   a4f34:	e59f1010 	ldr	r1, [pc, #16]	@ a4f4c <__LibDispatch_SelectDrain@@Base+0xba0>
+   a4f38:	e1a04000 	mov	r4, r0
+   a4f3c:	ebffff8e 	bl	a4d7c <__LibDispatch_SelectDrain@@Base+0x9d0>
+   a4f40:	e1a00004 	mov	r0, r4
+   a4f44:	e8bd4010 	pop	{r4, lr}
+   a4f48:	eaff774a 	b	82c78 <AirPlayReceiverServerPlatformCopyProperty@@Base+0x6ddc>
+   a4f4c:	ffffe5bd 			@ <UNDEFINED> instruction: 0xffffe5bd
+   a4f50:	e92d4013 	push	{r0, r1, r4, lr}
+   a4f54:	e1a04000 	mov	r4, r0
+   a4f58:	e5900024 	ldr	r0, [r0, #36]	@ 0x24
+   a4f5c:	e5903000 	ldr	r3, [r0]
+
+===== HTTP CLIENT INVALIDATE enqueues callback =====
+
+/repo/stock_analysis/sdDongle:     file format elf32-littlearm
+
+
+Disassembly of section .text:
+
+000a6584 <__LibDispatch_SelectDrain@@Base+0x21d8>:
+   a6584:	e92d4010 	push	{r4, lr}
+   a6588:	e1a04000 	mov	r4, r0
+   a658c:	ebff71b8 	bl	82c74 <AirPlayReceiverServerPlatformCopyProperty@@Base+0x6dd8>
+   a6590:	e59f2010 	ldr	r2, [pc, #16]	@ a65a8 <__LibDispatch_SelectDrain@@Base+0x21fc>
+   a6594:	e1a01004 	mov	r1, r4
+   a6598:	e5940008 	ldr	r0, [r4, #8]
+   a659c:	e08f2002 	add	r2, pc, r2
+   a65a0:	e8bd4010 	pop	{r4, lr}
+   a65a4:	eaffecd5 	b	a1900 <__dispatch_source_free@@Base+0x1218>
+   a65a8:	ffffe98c 			@ <UNDEFINED> instruction: 0xffffe98c
+   a65ac:	e92d4010 	push	{r4, lr}
+   a65b0:	e5900044 	ldr	r0, [r0, #68]	@ 0x44
+   a65b4:	e24dd018 	sub	sp, sp, #24
+   a65b8:	e1a04003 	mov	r4, r3
+
+===== HTTP ENQUEUE HANDOFF client releases =====
+
+/repo/stock_analysis/sdDongle:     file format elf32-littlearm
+
+
+Disassembly of section .text:
+
+000a6040 <__LibDispatch_SelectDrain@@Base+0x1c94>:
+   a6040:	e92d4010 	push	{r4, lr}
+   a6044:	e59048ec 	ldr	r4, [r0, #2284]	@ 0x8ec
+   a6048:	e3a03000 	mov	r3, #0
+   a604c:	e5803008 	str	r3, [r0, #8]
+   a6050:	e59434a0 	ldr	r3, [r4, #1184]	@ 0x4a0
+   a6054:	e5830000 	str	r0, [r3]
+   a6058:	e2800008 	add	r0, r0, #8
+   a605c:	e58404a0 	str	r0, [r4, #1184]	@ 0x4a0
+   a6060:	e1a00004 	mov	r0, r4
+   a6064:	ebfffce4 	bl	a53fc <__LibDispatch_SelectDrain@@Base+0x1050>
+   a6068:	e1a00004 	mov	r0, r4
+   a606c:	e8bd4010 	pop	{r4, lr}
+   a6070:	eaff7300 	b	82c78 <AirPlayReceiverServerPlatformCopyProperty@@Base+0x6ddc>
+   a6074:	e92d4030 	push	{r4, r5, lr}
+
+===== CAR GLOBAL CLIENT INVALIDATION =====
+
+/repo/stock_analysis/sdDongle:     file format elf32-littlearm
+
+
+Disassembly of section .text:
+
+0002a74c <iap2_sim_msg_identify@@Base+0x8eb4>:
+   2a74c:	000c9495 	muleq	ip, r5, r4
+   2a750:	000006e8 	andeq	r0, r0, r8, ror #13
+   2a754:	000caf0a 	andeq	sl, ip, sl, lsl #30
+   2a758:	000c8b4f 	andeq	r8, ip, pc, asr #22
+   2a75c:	000caee1 	andeq	sl, ip, r1, ror #29
+   2a760:	000008c8 	andeq	r0, r0, r8, asr #17
+   2a764:	000c9429 	andeq	r9, ip, r9, lsr #8
+   2a768:	ffffe5b8 			@ <UNDEFINED> instruction: 0xffffe5b8
+   2a76c:	e59f305c 	ldr	r3, [pc, #92]	@ 2a7d0 <iap2_sim_msg_identify@@Base+0x8f38>
+   2a770:	e59f205c 	ldr	r2, [pc, #92]	@ 2a7d4 <iap2_sim_msg_identify@@Base+0x8f3c>
+   2a774:	e08f3003 	add	r3, pc, r3
+   2a778:	e92d4070 	push	{r4, r5, r6, lr}
+   2a77c:	e7934002 	ldr	r4, [r3, r2]
+   2a780:	e5940000 	ldr	r0, [r4]
+   2a784:	e3500000 	cmp	r0, #0
+   2a788:	0a000004 	beq	2a7a0 <iap2_sim_msg_identify@@Base+0x8f08>
+   2a78c:	eb01ef7c 	bl	a6584 <__LibDispatch_SelectDrain@@Base+0x21d8>
+   2a790:	e5940000 	ldr	r0, [r4]
+   2a794:	eb016137 	bl	82c78 <AirPlayReceiverServerPlatformCopyProperty@@Base+0x6ddc>
+   2a798:	e3a03000 	mov	r3, #0
+   2a79c:	e5843000 	str	r3, [r4]
+   2a7a0:	e59f4030 	ldr	r4, [pc, #48]	@ 2a7d8 <iap2_sim_msg_identify@@Base+0x8f40>
+   2a7a4:	e3a05000 	mov	r5, #0

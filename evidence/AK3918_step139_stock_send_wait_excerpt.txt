@@ -1,0 +1,56 @@
+# Step 139 native wait excerpt from user-supplied prior disassembly
+# Source: prior user-supplied ARM objdump of stock sdDongle (original
+#   0x2f6b8 function). Only instructions in two relevant windows copied.
+# Whitespace and escaped symbols normalized; this is not a new extraction.
+# Correlate with original exact-stock SHA-256 from Step 133.
+# Function 0xa15b8 has NOT been independently disassembled here.
+# The pair r2/r3 = -1 before BL corresponds to a 64-bit all-ones timeout.
+# The stock caller's return branch is conditional, not an unconditional wait.
+2fbb0:	eb01db6f	bl	a6974 <__LibDispatch_SelectDrain@@Base+0x25c8>
+2fbb4:	e3a01020	mov	r1, #32
+2fbb8:	e1a04000	mov	r4, r0
+2fbbc:	e1a00009	mov	r0, r9
+2fbc0:	ebffa431	bl	18c8c <timestamp_ext@plt>
+2fbc4:	e59f2714	ldr	r2, [pc, #1812]	@ 302e0 <video_fake_video_conifig_notify_impl@@Base+0x19dc>
+2fbc8:	e59f1714	ldr	r1, [pc, #1812]	@ 302e4 <video_fake_video_conifig_notify_impl@@Base+0x19e0>
+2fbcc:	e58d2000	str	r2, [sp]
+2fbd0:	e2883f63	add	r3, r8, #396	@ 0x18c
+2fbd4:	e2833001	add	r3, r3, #1
+2fbd8:	e1a02009	mov	r2, r9
+2fbdc:	e08f1001	add	r1, pc, r1
+2fbe0:	e59b0000	ldr	r0, [fp]
+2fbe4:	ebffa149	bl	18110 <fprintf@plt>
+2fbe8:	e59b0000	ldr	r0, [fp]
+2fbec:	ebffa2a0	bl	18674 <fflush@plt>
+2fbf0:	e3540000	cmp	r4, #0
+2fbf4:	0a000009	beq	2fc20 <video_fake_video_conifig_notify_impl@@Base+0x131c>
+2fbf8:	e59f36e8	ldr	r3, [pc, #1768]	@ 302e8 <video_fake_video_conifig_notify_impl@@Base+0x19e4>
+2fbfc:	e2888e13	add	r8, r8, #304	@ 0x130
+2fc00:	e58d3000	str	r3, [sp]
+2fc04:	e59f36e0	ldr	r3, [pc, #1760]	@ 302ec <video_fake_video_conifig_notify_impl@@Base+0x19e8>
+2fc08:	e2888003	add	r8, r8, #3
+2fc0c:	e58da008	str	sl, [sp, #8]
+2fc10:	e58d8004	str	r8, [sp, #4]
+2fc14:	e08f3003	add	r3, pc, r3
+2fc18:	e1a0200a	mov	r2, sl
+2fc1c:	ea00006e	b	2fddc <video_fake_video_conifig_notify_impl@@Base+0x14d8>
+2fc20:	e3a01020	mov	r1, #32
+2fc24:	e1a00009	mov	r0, r9
+2fc28:	ebffa417	bl	18c8c <timestamp_ext@plt>
+2fc2c:	e59f16bc	ldr	r1, [pc, #1724]	@ 302f0 <video_fake_video_conifig_notify_impl@@Base+0x19ec>
+2fc30:	e1a02009	mov	r2, r9
+2fc34:	e08f1001	add	r1, pc, r1
+2fc38:	e59b0000	ldr	r0, [fp]
+2fc3c:	ebffa133	bl	18110 <fprintf@plt>
+2fc40:	e59b0000	ldr	r0, [fp]
+2fc44:	ebffa28a	bl	18674 <fflush@plt>
+2fc48:	e3e03000	mvn	r3, #0
+2fc4c:	e3e02000	mvn	r2, #0
+2fc50:	e5960030	ldr	r0, [r6, #48]	@ 0x30
+2fc54:	eb01c657	bl	a15b8 <__dispatch_source_free@@Base+0xed0>
+2fc58:	e3a01020	mov	r1, #32
+2ee68:	e59638fc	ldr	r3, [r6, #2300]	@ 0x8fc
+2ee6c:	e5837004	str	r7, [r3, #4]
+2ee70:	e5930030	ldr	r0, [r3, #48]	@ 0x30
+2ee74:	eb01c92f	bl	a1338 <__dispatch_source_free@@Base+0xc50>
+2ee78:	e3580000	cmp	r8, #0

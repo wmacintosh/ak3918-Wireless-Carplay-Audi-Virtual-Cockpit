@@ -1,0 +1,99 @@
+STEP 143 DISPOSABLE ARM LOADER SYMBOL AND CGI-RECOVERY AUDIT
+NO DEVICE NETWORK, NO ARCHIVE UPLOAD, NO PACKAGING OR FLASH
+MAC_REPOSITORY=/Users/wademacintosh/AK3918_GitHub
+
+===== REPEAT STOCK INTEGRITY GATE =====
+STEP 141 OFFLINE READ-ONLY EXPERIMENTAL PREFLIGHT
+This script does NOT build, package, upload or flash firmware.
+PASS: isolated WIP branch, clean tracked tree, commit 860c3f263092
+PASS: combined=1 phone=1, opt-in test-only package plan
+PASS: exact original ARM stock SHA256 and patch-input invariants
+PASS: in-memory mapped zero-gap candidate VA=0x102e74 file=0xf2e74 bytes=30
+PASS: in-memory mapped zero-gap candidate VA=0x102e94 file=0xf2e94 bytes=12
+PASS: in-memory mapped zero-gap candidate VA=0x102ea0 file=0xf2ea0 bytes=12
+PASS: in-memory mapped zero-gap candidate VA=0x102eac file=0xf2eac bytes=12
+PASS: historical recovery archive hash, file names and member safety
+PASS: all five builder inputs equal original recovery archive members
+PASS: historical installer is for stock/legacy tar ONLY, not this experiment
+INFO: AK_UCLIBC_CC unset on host; builder requires ARM/uClibc compiler
+PASS: STEP141 OFFLINE STATIC PREFLIGHT
+BLOCKED FOR FLASH: preflight does not validate a final built/repaired ELF, ARM imports in the target loader, independent recovery if CGI is unavailable, or actual car runtime.
+===== CGI RECOVERY PATH REVIEW (OFFLINE) =====
+PASS: pinned historical stock recovery SHA256 and original ELF member
+PASS: archive contains exactly five original vendor files
+INFO: flash_ak.py performs upload via /cgi-bin/downfile.cgi even for --check-only (call at line 34)
+INFO: --stock restore also calls /cgi-bin/submition.cgi and reboot.cgi
+RECOVERY_CLASSIFICATION: CGI-dependent software restore only
+NOT VERIFIED: UART, serial console, bootloader, alternate boot source, full flash image or hardware-independent unbrick
+BLOCKED FOR FLASH: no verified recovery route if Wi-Fi/CGI cannot start
+PASS: STEP143 OFFLINE RECOVERY LIMITATION AUDIT
+===== EPHEMERAL ARM HOOK BUILD, NO FIRMWARE PATCH =====
+PASS: ELF32 ARM, soft float, uClibc dependency, constructor, exported hook
+PASS: disposable ARM shared library built without firmware packaging
+TOOLCHAIN_SYSROOT=/workspace/buildroot-work/buildroot/output/host/arm-buildroot-linux-uclibcgnueabi/sysroot
+TOOLCHAIN_LIBC=/workspace/buildroot-work/buildroot/output/host/arm-buildroot-linux-uclibcgnueabi/sysroot/lib/libc.so.0
+===== OFFLINE PROVIDER SYMBOL AUDIT =====
+PASS: ELF32 ARM stock and hook, matching libc.so.0, and startup BIND_NOW
+STOCK DT_NEEDED: libSdCommon.so, libstdc++.so.6, libdns_sd.so, libSdUtils.so, libfdk-aac.so.2, libopus.so.0, libasound.so.2, libusb-1.0.so.0, libexecinfo.so, libgcc_s.so.1, libc.so.0
+HOOK  DT_NEEDED: libc.so.0
+STOCK interpreter: /lib/ld-uClibc.so.0 (metadata only)
+HOOK symbols: 33 strong imports, 5 weak imports, 7 dynamic exports
+PASS: loaded exact historical stock executable and vendor .dynsym exports
+INFO: toolchain libc.so.0 SHA256 42891edc20c0f47833248f0dc312199e051e966e2a9b0e859f0137ebe55603d7 (NOT verified as installed on dongle)
+INFO: Buildroot libpthread.so.0 not found; it may be merged into libc
+
+STRONG DYNAMIC HOOK IMPORT RESOLUTION AGAINST AVAILABLE SYMBOL TABLES:
+  COVERED __errno_location                 toolchain:libc.so.0
+  COVERED accept                           toolchain:libc.so.0
+  COVERED close                            toolchain:libc.so.0
+  COVERED connect                          toolchain:libc.so.0
+  COVERED fcntl                            toolchain:libc.so.0
+  COVERED free                             toolchain:libc.so.0
+  COVERED fstat                            toolchain:libc.so.0
+  COVERED getsockopt                       toolchain:libc.so.0
+  COVERED malloc                           toolchain:libc.so.0
+  COVERED memcpy                           toolchain:libc.so.0
+  COVERED memset                           toolchain:libc.so.0
+  COVERED open                             toolchain:libc.so.0
+  COVERED poll                             toolchain:libc.so.0
+  COVERED pthread_cond_broadcast           toolchain:libc.so.0
+  COVERED pthread_cond_wait                toolchain:libc.so.0
+  COVERED pthread_create                   toolchain:libc.so.0
+  COVERED pthread_detach                   toolchain:libc.so.0
+  COVERED pthread_equal                    toolchain:libc.so.0
+  COVERED pthread_mutex_destroy            toolchain:libc.so.0
+  COVERED pthread_mutex_init               toolchain:libc.so.0
+  COVERED pthread_mutex_lock               toolchain:libc.so.0
+  COVERED pthread_mutex_unlock             toolchain:libc.so.0
+  COVERED pthread_self                     toolchain:libc.so.0
+  COVERED raise                            toolchain:libc.so.0
+  COVERED read                             toolchain:libc.so.0
+  COVERED send                             toolchain:libc.so.0
+  COVERED setsockopt                       toolchain:libc.so.0
+  COVERED shutdown                         toolchain:libc.so.0
+  COVERED snprintf                         toolchain:libc.so.0
+  COVERED socket                           toolchain:libc.so.0
+  COVERED strlen                           toolchain:libc.so.0
+  COVERED usleep                           toolchain:libc.so.0
+  COVERED write                            toolchain:libc.so.0
+
+PTHREAD API COVERAGE:
+  pthread_create: toolchain:libc.so.0
+  pthread_detach: toolchain:libc.so.0
+  pthread_equal: toolchain:libc.so.0
+  pthread_cond_wait: toolchain:libc.so.0
+  pthread_cond_broadcast: toolchain:libc.so.0
+  pthread_mutex_init: toolchain:libc.so.0
+  pthread_mutex_destroy: toolchain:libc.so.0
+  pthread_mutex_lock: toolchain:libc.so.0
+  pthread_mutex_unlock: toolchain:libc.so.0
+  pthread_self: toolchain:libc.so.0
+TOTAL_STRONG_IMPORTS 33
+COVERED_STRONG_IMPORTS 33
+UNKNOWN_STRONG_IMPORTS 0
+SHIM_SHA256 6e70f606501354267567873ec75d291914a5f946a04be3730dc4f085575d1bd9
+PASS: STEP143 AVAILABLE-PROVIDER ELF SYMBOL AUDIT
+NOT VERIFIED: actual target libc/pthread hashes, target loader search order, startup relocations, ARM runtime or independent physical recovery
+BLOCKED FOR FLASH: static symbol availability is not target-loader proof.
+PASS: STEP143 OFFLINE SYMBOL AND CGI AUDITS COMPLETE
+NOT VERIFIED: actual target libraries/loader, hardware unbrick or video

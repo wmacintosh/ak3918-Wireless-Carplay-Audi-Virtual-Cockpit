@@ -1,0 +1,1108 @@
+
+===== HTTP CLIENT CLASS FINALIZER CANDIDATE AND NEIGHBORS =====
+
+/repo/stock_analysis/sdDongle:     file format elf32-littlearm
+
+
+Disassembly of section .text:
+
+000a4a10 <__LibDispatch_SelectDrain@@Base+0x664>:
+   a4a10:	e08f2002 	add	r2, pc, r2
+   a4a14:	e1a00001 	mov	r0, r1
+   a4a18:	ebffe895 	bl	9ec74 <_IPCAgent_ReadHandler@@Base+0x112c>
+   a4a1c:	ea000037 	b	a4b00 <__LibDispatch_SelectDrain@@Base+0x754>
+   a4a20:	e2885f45 	add	r5, r8, #276	@ 0x114
+   a4a24:	e51f7184 	ldr	r7, [pc, #-388]	@ a48a8 <__LibDispatch_SelectDrain@@Base+0x4fc>
+   a4a28:	e51f8184 	ldr	r8, [pc, #-388]	@ a48ac <__LibDispatch_SelectDrain@@Base+0x500>
+   a4a2c:	e51f6184 	ldr	r6, [pc, #-388]	@ a48b0 <__LibDispatch_SelectDrain@@Base+0x504>
+   a4a30:	e08f8008 	add	r8, pc, r8
+   a4a34:	e08f7007 	add	r7, pc, r7
+   a4a38:	e08f6006 	add	r6, pc, r6
+   a4a3c:	e5954000 	ldr	r4, [r5]
+   a4a40:	e3540000 	cmp	r4, #0
+   a4a44:	0affff1c 	beq	a46bc <__LibDispatch_SelectDrain@@Base+0x310>
+   a4a48:	e5942000 	ldr	r2, [r4]
+   a4a4c:	e51f31a0 	ldr	r3, [pc, #-416]	@ a48b4 <__LibDispatch_SelectDrain@@Base+0x508>
+   a4a50:	e1520003 	cmp	r2, r3
+   a4a54:	0a00000a 	beq	a4a84 <__LibDispatch_SelectDrain@@Base+0x6d8>
+   a4a58:	e59d3024 	ldr	r3, [sp, #36]	@ 0x24
+   a4a5c:	e3a01000 	mov	r1, #0
+   a4a60:	e58d3004 	str	r3, [sp, #4]
+   a4a64:	e51f31b4 	ldr	r3, [pc, #-436]	@ a48b8 <__LibDispatch_SelectDrain@@Base+0x50c>
+   a4a68:	e58d9008 	str	r9, [sp, #8]
+   a4a6c:	e58d3000 	str	r3, [sp]
+   a4a70:	e51f31bc 	ldr	r3, [pc, #-444]	@ a48bc <__LibDispatch_SelectDrain@@Base+0x510>
+   a4a74:	e1a02008 	mov	r2, r8
+   a4a78:	e08f3003 	add	r3, pc, r3
+   a4a7c:	e1a00001 	mov	r0, r1
+   a4a80:	ebffe87b 	bl	9ec74 <_IPCAgent_ReadHandler@@Base+0x112c>
+   a4a84:	e594302c 	ldr	r3, [r4, #44]	@ 0x2c
+   a4a88:	e3530000 	cmp	r3, #0
+   a4a8c:	1a000005 	bne	a4aa8 <__LibDispatch_SelectDrain@@Base+0x6fc>
+   a4a90:	e5943038 	ldr	r3, [r4, #56]	@ 0x38
+   a4a94:	e1a022a3 	lsr	r2, r3, #5
+   a4a98:	e0862102 	add	r2, r6, r2, lsl #2
+   a4a9c:	e203301f 	and	r3, r3, #31
+   a4aa0:	e592219c 	ldr	r2, [r2, #412]	@ 0x19c
+   a4aa4:	ea000006 	b	a4ac4 <__LibDispatch_SelectDrain@@Base+0x718>
+   a4aa8:	e3530003 	cmp	r3, #3
+   a4aac:	1a000011 	bne	a4af8 <__LibDispatch_SelectDrain@@Base+0x74c>
+   a4ab0:	e5943038 	ldr	r3, [r4, #56]	@ 0x38
+   a4ab4:	e1a022a3 	lsr	r2, r3, #5
+   a4ab8:	e0872102 	add	r2, r7, r2, lsl #2
+   a4abc:	e592211c 	ldr	r2, [r2, #284]	@ 0x11c
+   a4ac0:	e203301f 	and	r3, r3, #31
+   a4ac4:	e1a03352 	asr	r3, r2, r3
+   a4ac8:	e3130001 	tst	r3, #1
+   a4acc:	0a000009 	beq	a4af8 <__LibDispatch_SelectDrain@@Base+0x74c>
+   a4ad0:	e5943030 	ldr	r3, [r4, #48]	@ 0x30
+   a4ad4:	e1a01004 	mov	r1, r4
+   a4ad8:	e5853000 	str	r3, [r5]
+   a4adc:	e51f3224 	ldr	r3, [pc, #-548]	@ a48c0 <__LibDispatch_SelectDrain@@Base+0x514>
+   a4ae0:	e5940018 	ldr	r0, [r4, #24]
+   a4ae4:	e79a3003 	ldr	r3, [sl, r3]
+   a4ae8:	e1a02003 	mov	r2, r3
+   a4aec:	e58d3010 	str	r3, [sp, #16]
+   a4af0:	ebfff382 	bl	a1900 <__dispatch_source_free@@Base+0x1218>
+   a4af4:	eaffffd0 	b	a4a3c <__LibDispatch_SelectDrain@@Base+0x690>
+   a4af8:	e2845030 	add	r5, r4, #48	@ 0x30
+   a4afc:	eaffffce 	b	a4a3c <__LibDispatch_SelectDrain@@Base+0x690>
+   a4b00:	e28dd034 	add	sp, sp, #52	@ 0x34
+   a4b04:	e8bd8ff0 	pop	{r4, r5, r6, r7, r8, r9, sl, fp, pc}
+   a4b08:	e92d401f 	push	{r0, r1, r2, r3, r4, lr}
+   a4b0c:	e1a04000 	mov	r4, r0
+   a4b10:	e5900008 	ldr	r0, [r0, #8]
+   a4b14:	e3500000 	cmp	r0, #0
+   a4b18:	0a000002 	beq	a4b28 <__LibDispatch_SelectDrain@@Base+0x77c>
+   a4b1c:	ebffee66 	bl	a04bc <__dispatch_semaphore_free@@Base+0x138>
+   a4b20:	e3a03000 	mov	r3, #0
+   a4b24:	e5843008 	str	r3, [r4, #8]
+   a4b28:	e5940018 	ldr	r0, [r4, #24]
+   a4b2c:	e3500000 	cmp	r0, #0
+   a4b30:	0a000002 	beq	a4b40 <__LibDispatch_SelectDrain@@Base+0x794>
+   a4b34:	ebfdcd3c 	bl	1802c <free@plt>
+   a4b38:	e3a03000 	mov	r3, #0
+   a4b3c:	e5843018 	str	r3, [r4, #24]
+   a4b40:	e594347c 	ldr	r3, [r4, #1148]	@ 0x47c
+   a4b44:	e3530000 	cmp	r3, #0
+   a4b48:	0a000001 	beq	a4b54 <__LibDispatch_SelectDrain@@Base+0x7a8>
+   a4b4c:	e5940474 	ldr	r0, [r4, #1140]	@ 0x474
+   a4b50:	e12fff33 	blx	r3
+   a4b54:	e5943048 	ldr	r3, [r4, #72]	@ 0x48
+   a4b58:	e3530000 	cmp	r3, #0
+   a4b5c:	0a00000c 	beq	a4b94 <__LibDispatch_SelectDrain@@Base+0x7e8>
+   a4b60:	e59f3094 	ldr	r3, [pc, #148]	@ a4bfc <__LibDispatch_SelectDrain@@Base+0x850>
+   a4b64:	e59f2094 	ldr	r2, [pc, #148]	@ a4c00 <__LibDispatch_SelectDrain@@Base+0x854>
+   a4b68:	e08f3003 	add	r3, pc, r3
+   a4b6c:	e58d3004 	str	r3, [sp, #4]
+   a4b70:	e3a03f43 	mov	r3, #268	@ 0x10c
+   a4b74:	e58d3000 	str	r3, [sp]
+   a4b78:	e59f3084 	ldr	r3, [pc, #132]	@ a4c04 <__LibDispatch_SelectDrain@@Base+0x858>
+   a4b7c:	e3a01000 	mov	r1, #0
+   a4b80:	e58d1008 	str	r1, [sp, #8]
+   a4b84:	e08f3003 	add	r3, pc, r3
+   a4b88:	e08f2002 	add	r2, pc, r2
+   a4b8c:	e1a00001 	mov	r0, r1
+   a4b90:	ebffe837 	bl	9ec74 <_IPCAgent_ReadHandler@@Base+0x112c>
+   a4b94:	e5940044 	ldr	r0, [r4, #68]	@ 0x44
+   a4b98:	e3500000 	cmp	r0, #0
+   a4b9c:	ba000014 	blt	a4bf4 <__LibDispatch_SelectDrain@@Base+0x848>
+   a4ba0:	ebfdd0b1 	bl	18e6c <close@plt>
+   a4ba4:	e3500000 	cmp	r0, #0
+   a4ba8:	0a00000f 	beq	a4bec <__LibDispatch_SelectDrain@@Base+0x840>
+   a4bac:	ebfdcecb 	bl	186e0 <__errno_location@plt>
+   a4bb0:	e59f3050 	ldr	r3, [pc, #80]	@ a4c08 <__LibDispatch_SelectDrain@@Base+0x85c>
+   a4bb4:	e3a02000 	mov	r2, #0
+   a4bb8:	e08f3003 	add	r3, pc, r3
+   a4bbc:	e5901000 	ldr	r1, [r0]
+   a4bc0:	e58d3004 	str	r3, [sp, #4]
+   a4bc4:	e59f3040 	ldr	r3, [pc, #64]	@ a4c0c <__LibDispatch_SelectDrain@@Base+0x860>
+   a4bc8:	e59f0040 	ldr	r0, [pc, #64]	@ a4c10 <__LibDispatch_SelectDrain@@Base+0x864>
+   a4bcc:	e58d3000 	str	r3, [sp]
+   a4bd0:	e59f303c 	ldr	r3, [pc, #60]	@ a4c14 <__LibDispatch_SelectDrain@@Base+0x868>
+   a4bd4:	e1510002 	cmp	r1, r2
+   a4bd8:	01a01000 	moveq	r1, r0
+   a4bdc:	e58d2008 	str	r2, [sp, #8]
+   a4be0:	e08f3003 	add	r3, pc, r3
+   a4be4:	e1a00002 	mov	r0, r2
+   a4be8:	ebffe821 	bl	9ec74 <_IPCAgent_ReadHandler@@Base+0x112c>
+   a4bec:	e3e03000 	mvn	r3, #0
+   a4bf0:	e5843044 	str	r3, [r4, #68]	@ 0x44
+   a4bf4:	e28dd010 	add	sp, sp, #16
+   a4bf8:	e8bd8010 	pop	{r4, pc}
+   a4bfc:	00065bfd 	strdeq	r5, [r6], -sp
+   a4c00:	00065de2 	andeq	r5, r6, r2, ror #27
+   a4c04:	00065d74 	andeq	r5, r6, r4, ror sp
+   a4c08:	00065bad 	andeq	r5, r6, sp, lsr #23
+   a4c0c:	0000010d 	andeq	r0, r0, sp, lsl #2
+   a4c10:	ffffe5d4 			@ <UNDEFINED> instruction: 0xffffe5d4
+   a4c14:	00065d18 	andeq	r5, r6, r8, lsl sp
+
+===== HTTP MESSAGE COMPLETION AND CALLBACK =====
+
+/repo/stock_analysis/sdDongle:     file format elf32-littlearm
+
+
+Disassembly of section .text:
+
+000a4c18 <__LibDispatch_SelectDrain@@Base+0x86c>:
+   a4c18:	e5913008 	ldr	r3, [r1, #8]
+   a4c1c:	e92d4010 	push	{r4, lr}
+   a4c20:	e3530000 	cmp	r3, #0
+   a4c24:	e580349c 	str	r3, [r0, #1180]	@ 0x49c
+   a4c28:	02803e49 	addeq	r3, r0, #1168	@ 0x490
+   a4c2c:	0283300c 	addeq	r3, r3, #12
+   a4c30:	058034a0 	streq	r3, [r0, #1184]	@ 0x4a0
+   a4c34:	e5913904 	ldr	r3, [r1, #2308]	@ 0x904
+   a4c38:	e1a04001 	mov	r4, r1
+   a4c3c:	e3530000 	cmp	r3, #0
+   a4c40:	e58128e8 	str	r2, [r1, #2280]	@ 0x8e8
+   a4c44:	0a000001 	beq	a4c50 <__LibDispatch_SelectDrain@@Base+0x8a4>
+   a4c48:	e1a00001 	mov	r0, r1
+   a4c4c:	e12fff33 	blx	r3
+   a4c50:	e1a00004 	mov	r0, r4
+   a4c54:	e8bd4010 	pop	{r4, lr}
+   a4c58:	eaff7806 	b	82c78 <AirPlayReceiverServerPlatformCopyProperty@@Base+0x6ddc>
+   a4c5c:	eaff7805 	b	82c78 <AirPlayReceiverServerPlatformCopyProperty@@Base+0x6ddc>
+   a4c60:	e5901048 	ldr	r1, [r0, #72]	@ 0x48
+
+===== HTTP CLIENT ERROR DRAIN AND RELEASE =====
+
+/repo/stock_analysis/sdDongle:     file format elf32-littlearm
+
+
+Disassembly of section .text:
+
+000a4d7c <__LibDispatch_SelectDrain@@Base+0x9d0>:
+   a4d7c:	e59f31a0 	ldr	r3, [pc, #416]	@ a4f24 <__LibDispatch_SelectDrain@@Base+0xb78>
+   a4d80:	e92d4037 	push	{r0, r1, r2, r4, r5, lr}
+   a4d84:	e3510000 	cmp	r1, #0
+   a4d88:	11510003 	cmpne	r1, r3
+   a4d8c:	e1a05001 	mov	r5, r1
+   a4d90:	e243301d 	sub	r3, r3, #29
+   a4d94:	13a01001 	movne	r1, #1
+   a4d98:	03a01000 	moveq	r1, #0
+   a4d9c:	e1550003 	cmp	r5, r3
+   a4da0:	03a01000 	moveq	r1, #0
+   a4da4:	12011001 	andne	r1, r1, #1
+   a4da8:	e3510000 	cmp	r1, #0
+   a4dac:	e1a04000 	mov	r4, r0
+   a4db0:	0a000009 	beq	a4ddc <__LibDispatch_SelectDrain@@Base+0xa30>
+   a4db4:	e5900024 	ldr	r0, [r0, #36]	@ 0x24
+   a4db8:	e5903000 	ldr	r3, [r0]
+   a4dbc:	e3530028 	cmp	r3, #40	@ 0x28
+   a4dc0:	ca000005 	bgt	a4ddc <__LibDispatch_SelectDrain@@Base+0xa30>
+   a4dc4:	e3730001 	cmn	r3, #1
+   a4dc8:	1a000047 	bne	a4eec <__LibDispatch_SelectDrain@@Base+0xb40>
+   a4dcc:	e3a01028 	mov	r1, #40	@ 0x28
+   a4dd0:	eb002805 	bl	aedec <_HTTPServerControl@@Base+0x6c84>
+   a4dd4:	e3500000 	cmp	r0, #0
+   a4dd8:	1a000043 	bne	a4eec <__LibDispatch_SelectDrain@@Base+0xb40>
+   a4ddc:	e5940040 	ldr	r0, [r4, #64]	@ 0x40
+   a4de0:	e3a03009 	mov	r3, #9
+   a4de4:	e3500000 	cmp	r0, #0
+   a4de8:	e584303c 	str	r3, [r4, #60]	@ 0x3c
+   a4dec:	0a000002 	beq	a4dfc <__LibDispatch_SelectDrain@@Base+0xa50>
+   a4df0:	eb00dcbe 	bl	dc0f0 <strlcpy@@Base+0x1205c>
+   a4df4:	e3a03000 	mov	r3, #0
+   a4df8:	e5843040 	str	r3, [r4, #64]	@ 0x40
+   a4dfc:	e594004c 	ldr	r0, [r4, #76]	@ 0x4c
+   a4e00:	e3500000 	cmp	r0, #0
+   a4e04:	0a00000b 	beq	a4e38 <__LibDispatch_SelectDrain@@Base+0xa8c>
+   a4e08:	ebfffb5d 	bl	a3b84 <__LibDispatch_SelectHandleReadWriteEvent@@Base+0x74>
+   a4e0c:	e5d43050 	ldrb	r3, [r4, #80]	@ 0x50
+   a4e10:	e3530000 	cmp	r3, #0
+   a4e14:	0a000003 	beq	a4e28 <__LibDispatch_SelectDrain@@Base+0xa7c>
+   a4e18:	e594004c 	ldr	r0, [r4, #76]	@ 0x4c
+   a4e1c:	ebfffa68 	bl	a37c4 <__LibDispatchCF_SourcePerform@@Base+0x5f8>
+   a4e20:	e3a03000 	mov	r3, #0
+   a4e24:	e5c43050 	strb	r3, [r4, #80]	@ 0x50
+   a4e28:	e594004c 	ldr	r0, [r4, #76]	@ 0x4c
+   a4e2c:	ebffeda2 	bl	a04bc <__dispatch_semaphore_free@@Base+0x138>
+   a4e30:	e3a03000 	mov	r3, #0
+   a4e34:	e584304c 	str	r3, [r4, #76]	@ 0x4c
+   a4e38:	e5940054 	ldr	r0, [r4, #84]	@ 0x54
+   a4e3c:	e3500000 	cmp	r0, #0
+   a4e40:	0a00000b 	beq	a4e74 <__LibDispatch_SelectDrain@@Base+0xac8>
+   a4e44:	ebfffb4e 	bl	a3b84 <__LibDispatch_SelectHandleReadWriteEvent@@Base+0x74>
+   a4e48:	e5d43058 	ldrb	r3, [r4, #88]	@ 0x58
+   a4e4c:	e3530000 	cmp	r3, #0
+   a4e50:	0a000003 	beq	a4e64 <__LibDispatch_SelectDrain@@Base+0xab8>
+   a4e54:	e5940054 	ldr	r0, [r4, #84]	@ 0x54
+   a4e58:	ebfffa59 	bl	a37c4 <__LibDispatchCF_SourcePerform@@Base+0x5f8>
+   a4e5c:	e3a03000 	mov	r3, #0
+   a4e60:	e5c43058 	strb	r3, [r4, #88]	@ 0x58
+   a4e64:	e5940054 	ldr	r0, [r4, #84]	@ 0x54
+   a4e68:	ebffed93 	bl	a04bc <__dispatch_semaphore_free@@Base+0x138>
+   a4e6c:	e3a03000 	mov	r3, #0
+   a4e70:	e5843054 	str	r3, [r4, #84]	@ 0x54
+   a4e74:	e594005c 	ldr	r0, [r4, #92]	@ 0x5c
+   a4e78:	e3500000 	cmp	r0, #0
+   a4e7c:	0a000004 	beq	a4e94 <__LibDispatch_SelectDrain@@Base+0xae8>
+   a4e80:	ebfffb3f 	bl	a3b84 <__LibDispatch_SelectHandleReadWriteEvent@@Base+0x74>
+   a4e84:	e594005c 	ldr	r0, [r4, #92]	@ 0x5c
+   a4e88:	ebffed8b 	bl	a04bc <__dispatch_semaphore_free@@Base+0x138>
+   a4e8c:	e3a03000 	mov	r3, #0
+   a4e90:	e584305c 	str	r3, [r4, #92]	@ 0x5c
+   a4e94:	e5940464 	ldr	r0, [r4, #1124]	@ 0x464
+   a4e98:	e3500000 	cmp	r0, #0
+   a4e9c:	0a000002 	beq	a4eac <__LibDispatch_SelectDrain@@Base+0xb00>
+   a4ea0:	ebff7774 	bl	82c78 <AirPlayReceiverServerPlatformCopyProperty@@Base+0x6ddc>
+   a4ea4:	e3a03000 	mov	r3, #0
+   a4ea8:	e5843464 	str	r3, [r4, #1124]	@ 0x464
+   a4eac:	e594149c 	ldr	r1, [r4, #1180]	@ 0x49c
+   a4eb0:	e3510000 	cmp	r1, #0
+   a4eb4:	0a000003 	beq	a4ec8 <__LibDispatch_SelectDrain@@Base+0xb1c>
+   a4eb8:	e1a02005 	mov	r2, r5
+   a4ebc:	e1a00004 	mov	r0, r4
+   a4ec0:	ebffff54 	bl	a4c18 <__LibDispatch_SelectDrain@@Base+0x86c>
+   a4ec4:	eafffff8 	b	a4eac <__LibDispatch_SelectDrain@@Base+0xb00>
+   a4ec8:	e5943010 	ldr	r3, [r4, #16]
+   a4ecc:	e5841010 	str	r1, [r4, #16]
+   a4ed0:	e3530000 	cmp	r3, #0
+   a4ed4:	0a000010 	beq	a4f1c <__LibDispatch_SelectDrain@@Base+0xb70>
+   a4ed8:	e594100c 	ldr	r1, [r4, #12]
+   a4edc:	e1a00005 	mov	r0, r5
+   a4ee0:	e28dd00c 	add	sp, sp, #12
+   a4ee4:	e8bd4030 	pop	{r4, r5, lr}
+   a4ee8:	e12fff13 	bx	r3
+   a4eec:	e5943018 	ldr	r3, [r4, #24]
+   a4ef0:	e59f1030 	ldr	r1, [pc, #48]	@ a4f28 <__LibDispatch_SelectDrain@@Base+0xb7c>
+   a4ef4:	e58d3000 	str	r3, [sp]
+   a4ef8:	e59f302c 	ldr	r3, [pc, #44]	@ a4f2c <__LibDispatch_SelectDrain@@Base+0xb80>
+   a4efc:	e08f1001 	add	r1, pc, r1
+   a4f00:	e58d5004 	str	r5, [sp, #4]
+   a4f04:	e08f3003 	add	r3, pc, r3
+   a4f08:	e3a02028 	mov	r2, #40	@ 0x28
+   a4f0c:	e281102d 	add	r1, r1, #45	@ 0x2d
+   a4f10:	e5940024 	ldr	r0, [r4, #36]	@ 0x24
+   a4f14:	eb002927 	bl	af3b8 <_HTTPServerControl@@Base+0x7250>
+   a4f18:	eaffffaf 	b	a4ddc <__LibDispatch_SelectDrain@@Base+0xa30>
+   a4f1c:	e28dd00c 	add	sp, sp, #12
+   a4f20:	e8bd8030 	pop	{r4, r5, pc}
+   a4f24:	ffffe5bd 			@ <UNDEFINED> instruction: 0xffffe5bd
+   a4f28:	00065869 	andeq	r5, r6, r9, ror #16
+   a4f2c:	00065a96 	muleq	r6, r6, sl
+   a4f30:	e92d4010 	push	{r4, lr}
+   a4f34:	e59f1010 	ldr	r1, [pc, #16]	@ a4f4c <__LibDispatch_SelectDrain@@Base+0xba0>
+   a4f38:	e1a04000 	mov	r4, r0
+   a4f3c:	ebffff8e 	bl	a4d7c <__LibDispatch_SelectDrain@@Base+0x9d0>
+   a4f40:	e1a00004 	mov	r0, r4
+   a4f44:	e8bd4010 	pop	{r4, lr}
+   a4f48:	eaff774a 	b	82c78 <AirPlayReceiverServerPlatformCopyProperty@@Base+0x6ddc>
+   a4f4c:	ffffe5bd 			@ <UNDEFINED> instruction: 0xffffe5bd
+
+===== NATIVE QUEUE RETAIN AND RELEASE =====
+
+/repo/stock_analysis/sdDongle:     file format elf32-littlearm
+
+
+Disassembly of section .text:
+
+000a0454 <__dispatch_semaphore_free@@Base+0xd0>:
+   a0454:	e250c000 	subs	ip, r0, #0
+   a0458:	e92d401f 	push	{r0, r1, r2, r3, r4, lr}
+   a045c:	1a00000d 	bne	a0498 <__dispatch_semaphore_free@@Base+0x114>
+   a0460:	e59f3044 	ldr	r3, [pc, #68]	@ a04ac <__dispatch_semaphore_free@@Base+0x128>
+   a0464:	e59f2044 	ldr	r2, [pc, #68]	@ a04b0 <__dispatch_semaphore_free@@Base+0x12c>
+   a0468:	e08f3003 	add	r3, pc, r3
+   a046c:	e2833085 	add	r3, r3, #133	@ 0x85
+   a0470:	e58d3004 	str	r3, [sp, #4]
+   a0474:	e59f3038 	ldr	r3, [pc, #56]	@ a04b4 <__dispatch_semaphore_free@@Base+0x130>
+   a0478:	e58dc008 	str	ip, [sp, #8]
+   a047c:	e58d3000 	str	r3, [sp]
+   a0480:	e59f3030 	ldr	r3, [pc, #48]	@ a04b8 <__dispatch_semaphore_free@@Base+0x134>
+   a0484:	e08f2002 	add	r2, pc, r2
+   a0488:	e08f3003 	add	r3, pc, r3
+   a048c:	e1a0100c 	mov	r1, ip
+   a0490:	ebfff9f7 	bl	9ec74 <_IPCAgent_ReadHandler@@Base+0x112c>
+   a0494:	ea000002 	b	a04a4 <__dispatch_semaphore_free@@Base+0x120>
+   a0498:	e3a01001 	mov	r1, #1
+   a049c:	e28c0004 	add	r0, ip, #4
+   a04a0:	eb013efa 	bl	f0090 <_AudioStreamSetProperty@@Base+0x2698>
+   a04a4:	e28dd014 	add	sp, sp, #20
+   a04a8:	e49df004 	pop	{pc}		@ (ldr pc, [sp], #4)
+   a04ac:	000696b6 			@ <UNDEFINED> instruction: 0x000696b6
+   a04b0:	000626c5 	andeq	r2, r6, r5, asr #13
+   a04b4:	0000041a 	andeq	r0, r0, sl, lsl r4
+   a04b8:	00069ae1 	andeq	r9, r6, r1, ror #21
+   a04bc:	e92d401f 	push	{r0, r1, r2, r3, r4, lr}
+   a04c0:	e2504000 	subs	r4, r0, #0
+   a04c4:	1a00000d 	bne	a0500 <__dispatch_semaphore_free@@Base+0x17c>
+   a04c8:	e59f309c 	ldr	r3, [pc, #156]	@ a056c <__dispatch_semaphore_free@@Base+0x1e8>
+   a04cc:	e59f209c 	ldr	r2, [pc, #156]	@ a0570 <__dispatch_semaphore_free@@Base+0x1ec>
+   a04d0:	e08f3003 	add	r3, pc, r3
+   a04d4:	e2833095 	add	r3, r3, #149	@ 0x95
+   a04d8:	e58d3004 	str	r3, [sp, #4]
+   a04dc:	e59f3090 	ldr	r3, [pc, #144]	@ a0574 <__dispatch_semaphore_free@@Base+0x1f0>
+   a04e0:	e58d4008 	str	r4, [sp, #8]
+   a04e4:	e58d3000 	str	r3, [sp]
+   a04e8:	e59f3088 	ldr	r3, [pc, #136]	@ a0578 <__dispatch_semaphore_free@@Base+0x1f4>
+   a04ec:	e08f2002 	add	r2, pc, r2
+   a04f0:	e08f3003 	add	r3, pc, r3
+   a04f4:	e1a01004 	mov	r1, r4
+   a04f8:	ebfff9dd 	bl	9ec74 <_IPCAgent_ReadHandler@@Base+0x112c>
+   a04fc:	ea000018 	b	a0564 <__dispatch_semaphore_free@@Base+0x1e0>
+   a0500:	e3e01000 	mvn	r1, #0
+   a0504:	e2840004 	add	r0, r4, #4
+   a0508:	eb013ee0 	bl	f0090 <_AudioStreamSetProperty@@Base+0x2698>
+   a050c:	e3500000 	cmp	r0, #0
+   a0510:	1a000013 	bne	a0564 <__dispatch_semaphore_free@@Base+0x1e0>
+   a0514:	e594100c 	ldr	r1, [r4, #12]
+   a0518:	e3510000 	cmp	r1, #0
+   a051c:	1a00000b 	bne	a0550 <__dispatch_semaphore_free@@Base+0x1cc>
+   a0520:	e59f3054 	ldr	r3, [pc, #84]	@ a057c <__dispatch_semaphore_free@@Base+0x1f8>
+   a0524:	e59f2054 	ldr	r2, [pc, #84]	@ a0580 <__dispatch_semaphore_free@@Base+0x1fc>
+   a0528:	e08f3003 	add	r3, pc, r3
+   a052c:	e2833095 	add	r3, r3, #149	@ 0x95
+   a0530:	e58d3004 	str	r3, [sp, #4]
+   a0534:	e59f3048 	ldr	r3, [pc, #72]	@ a0584 <__dispatch_semaphore_free@@Base+0x200>
+   a0538:	e58d1008 	str	r1, [sp, #8]
+   a053c:	e58d3000 	str	r3, [sp]
+   a0540:	e59f3040 	ldr	r3, [pc, #64]	@ a0588 <__dispatch_semaphore_free@@Base+0x204>
+   a0544:	e08f2002 	add	r2, pc, r2
+   a0548:	e08f3003 	add	r3, pc, r3
+   a054c:	ebfff9c8 	bl	9ec74 <_IPCAgent_ReadHandler@@Base+0x112c>
+   a0550:	e594300c 	ldr	r3, [r4, #12]
+   a0554:	e1a00004 	mov	r0, r4
+   a0558:	e28dd010 	add	sp, sp, #16
+   a055c:	e8bd4010 	pop	{r4, lr}
+   a0560:	e12fff13 	bx	r3
+   a0564:	e28dd010 	add	sp, sp, #16
+
+===== HTTP CLASS INIT AND QUEUE RETAIN =====
+
+/repo/stock_analysis/sdDongle:     file format elf32-littlearm
+
+
+Disassembly of section .text:
+
+000a6364 <__LibDispatch_SelectDrain@@Base+0x1fb8>:
+   a6364:	e92d401f 	push	{r0, r1, r2, r3, r4, lr}
+   a6368:	e59f0054 	ldr	r0, [pc, #84]	@ a63c4 <__LibDispatch_SelectDrain@@Base+0x2018>
+   a636c:	e08f0000 	add	r0, pc, r0
+   a6370:	ebff78ba 	bl	84660 <AirPlayReceiverServerPlatformCopyProperty@@Base+0x87c4>
+   a6374:	e59f304c 	ldr	r3, [pc, #76]	@ a63c8 <__LibDispatch_SelectDrain@@Base+0x201c>
+   a6378:	e08f3003 	add	r3, pc, r3
+   a637c:	e3500000 	cmp	r0, #0
+   a6380:	e5830000 	str	r0, [r3]
+   a6384:	1a00000c 	bne	a63bc <__LibDispatch_SelectDrain@@Base+0x2010>
+   a6388:	e59f303c 	ldr	r3, [pc, #60]	@ a63cc <__LibDispatch_SelectDrain@@Base+0x2020>
+   a638c:	e59f203c 	ldr	r2, [pc, #60]	@ a63d0 <__LibDispatch_SelectDrain@@Base+0x2024>
+   a6390:	e08f3003 	add	r3, pc, r3
+   a6394:	e28330c6 	add	r3, r3, #198	@ 0xc6
+   a6398:	e58d3004 	str	r3, [sp, #4]
+   a639c:	e3a030cb 	mov	r3, #203	@ 0xcb
+   a63a0:	e58d3000 	str	r3, [sp]
+   a63a4:	e59f3028 	ldr	r3, [pc, #40]	@ a63d4 <__LibDispatch_SelectDrain@@Base+0x2028>
+   a63a8:	e1a01000 	mov	r1, r0
+   a63ac:	e58d0008 	str	r0, [sp, #8]
+   a63b0:	e08f3003 	add	r3, pc, r3
+   a63b4:	e08f2002 	add	r2, pc, r2
+   a63b8:	ebffe22d 	bl	9ec74 <_IPCAgent_ReadHandler@@Base+0x112c>
+   a63bc:	e28dd014 	add	sp, sp, #20
+   a63c0:	e49df004 	pop	{pc}		@ (ldr pc, [sp], #4)
+   a63c4:	0008eb18 	andeq	lr, r8, r8, lsl fp
+   a63c8:	00095790 	muleq	r9, r0, r7
+   a63cc:	000643d5 	ldrdeq	r4, [r6], -r5
+   a63d0:	00064792 	muleq	r6, r2, r7
+   a63d4:	00064548 	andeq	r4, r6, r8, asr #10
+   a63d8:	e59f0030 	ldr	r0, [pc, #48]	@ a6410 <__LibDispatch_SelectDrain@@Base+0x2064>
+   a63dc:	e92d4010 	push	{r4, lr}
+   a63e0:	e08f0000 	add	r0, pc, r0
+   a63e4:	e5903004 	ldr	r3, [r0, #4]
+   a63e8:	e3530002 	cmp	r3, #2
+   a63ec:	0a000004 	beq	a6404 <__LibDispatch_SelectDrain@@Base+0x2058>
+   a63f0:	e59f201c 	ldr	r2, [pc, #28]	@ a6414 <__LibDispatch_SelectDrain@@Base+0x2068>
+   a63f4:	e3a01000 	mov	r1, #0
+   a63f8:	e08f2002 	add	r2, pc, r2
+   a63fc:	e2800004 	add	r0, r0, #4
+   a6400:	ebffeb5c 	bl	a1178 <__dispatch_source_free@@Base+0xa90>
+   a6404:	e59f300c 	ldr	r3, [pc, #12]	@ a6418 <__LibDispatch_SelectDrain@@Base+0x206c>
+   a6408:	e79f0003 	ldr	r0, [pc, r3]
+   a640c:	e8bd8010 	pop	{r4, pc}
+   a6410:	00095728 	andeq	r5, r9, r8, lsr #14
+   a6414:	ffffff64 			@ <UNDEFINED> instruction: 0xffffff64
+   a6418:	00095700 	andeq	r5, r9, r0, lsl #14
+   a641c:	e92d407f 	push	{r0, r1, r2, r3, r4, r5, r6, lr}
+   a6420:	e59f50c4 	ldr	r5, [pc, #196]	@ a64ec <__LibDispatch_SelectDrain@@Base+0x2140>
+   a6424:	e1a06000 	mov	r6, r0
+   a6428:	ebffffea 	bl	a63d8 <__LibDispatch_SelectDrain@@Base+0x202c>
+   a642c:	e3a03000 	mov	r3, #0
+   a6430:	e59f20b8 	ldr	r2, [pc, #184]	@ a64f0 <__LibDispatch_SelectDrain@@Base+0x2144>
+   a6434:	e08f5005 	add	r5, pc, r5
+   a6438:	e1a01000 	mov	r1, r0
+   a643c:	e1a00003 	mov	r0, r3
+   a6440:	ebff7897 	bl	846a4 <AirPlayReceiverServerPlatformCopyProperty@@Base+0x8808>
+   a6444:	e2504000 	subs	r4, r0, #0
+   a6448:	1a00000e 	bne	a6488 <__LibDispatch_SelectDrain@@Base+0x20dc>
+   a644c:	e59f30a0 	ldr	r3, [pc, #160]	@ a64f4 <__LibDispatch_SelectDrain@@Base+0x2148>
+   a6450:	e59f20a0 	ldr	r2, [pc, #160]	@ a64f8 <__LibDispatch_SelectDrain@@Base+0x214c>
+   a6454:	e08f3003 	add	r3, pc, r3
+   a6458:	e28330db 	add	r3, r3, #219	@ 0xdb
+   a645c:	e58d3004 	str	r3, [sp, #4]
+   a6460:	e3a030da 	mov	r3, #218	@ 0xda
+   a6464:	e58d3000 	str	r3, [sp]
+   a6468:	e59f308c 	ldr	r3, [pc, #140]	@ a64fc <__LibDispatch_SelectDrain@@Base+0x2150>
+   a646c:	e58d4008 	str	r4, [sp, #8]
+   a6470:	e08f3003 	add	r3, pc, r3
+   a6474:	e08f2002 	add	r2, pc, r2
+   a6478:	e1a01004 	mov	r1, r4
+   a647c:	ebffe1fc 	bl	9ec74 <_IPCAgent_ReadHandler@@Base+0x112c>
+   a6480:	e59f0078 	ldr	r0, [pc, #120]	@ a6500 <__LibDispatch_SelectDrain@@Base+0x2154>
+   a6484:	ea000016 	b	a64e4 <__LibDispatch_SelectDrain@@Base+0x2138>
+   a6488:	e59f2060 	ldr	r2, [pc, #96]	@ a64f0 <__LibDispatch_SelectDrain@@Base+0x2144>
+   a648c:	e3a01000 	mov	r1, #0
+   a6490:	e2840008 	add	r0, r4, #8
+   a6494:	ebfdc855 	bl	185f0 <memset@plt>
+   a6498:	e3e03000 	mvn	r3, #0
+   a649c:	e5843044 	str	r3, [r4, #68]	@ 0x44
+   a64a0:	ebfff382 	bl	a32b0 <__LibDispatchCF_SourcePerform@@Base+0xe4>
+   a64a4:	e5840008 	str	r0, [r4, #8]
+   a64a8:	ebffe7e9 	bl	a0454 <__dispatch_semaphore_free@@Base+0xd0>
+   a64ac:	e59f3050 	ldr	r3, [pc, #80]	@ a6504 <__LibDispatch_SelectDrain@@Base+0x2158>
+   a64b0:	e3a00000 	mov	r0, #0
+   a64b4:	e7953003 	ldr	r3, [r5, r3]
+   a64b8:	e5843024 	str	r3, [r4, #36]	@ 0x24
+   a64bc:	e59f3044 	ldr	r3, [pc, #68]	@ a6508 <__LibDispatch_SelectDrain@@Base+0x215c>
+   a64c0:	e7953003 	ldr	r3, [r5, r3]
+   a64c4:	e5843480 	str	r3, [r4, #1152]	@ 0x480
+   a64c8:	e59f303c 	ldr	r3, [pc, #60]	@ a650c <__LibDispatch_SelectDrain@@Base+0x2160>
+
+===== CF RUNTIME REGISTER AND OBJECT CREATE =====
+
+/repo/stock_analysis/sdDongle:     file format elf32-littlearm
+
+
+Disassembly of section .text:
+
+00084640 <AirPlayReceiverServerPlatformCopyProperty@@Base+0x87a4>:
+   84640:	e3500000 	cmp	r0, #0
+   84644:	13550000 	cmpne	r5, #0
+   84648:	13a030c8 	movne	r3, #200	@ 0xc8
+   8464c:	15853000 	strne	r3, [r5]
+   84650:	e3540000 	cmp	r4, #0
+   84654:	13a03000 	movne	r3, #0
+   84658:	15843000 	strne	r3, [r4]
+   8465c:	e8bd81f0 	pop	{r4, r5, r6, r7, r8, pc}
+   84660:	e92d407f 	push	{r0, r1, r2, r3, r4, r5, r6, lr}
+   84664:	e5903004 	ldr	r3, [r0, #4]
+   84668:	e28d1018 	add	r1, sp, #24
+   8466c:	e58d3008 	str	r3, [sp, #8]
+   84670:	e5903010 	ldr	r3, [r0, #16]
+   84674:	e58d300c 	str	r3, [sp, #12]
+   84678:	e5903014 	ldr	r3, [r0, #20]
+   8467c:	e58d3010 	str	r3, [sp, #16]
+   84680:	e5903018 	ldr	r3, [r0, #24]
+   84684:	e28d0008 	add	r0, sp, #8
+   84688:	e58d3014 	str	r3, [sp, #20]
+   8468c:	e3a03000 	mov	r3, #0
+   84690:	e5213014 	str	r3, [r1, #-20]!	@ 0xffffffec
+   84694:	eb001cc8 	bl	8b9bc <AirPlayReceiverServerPlatformCopyProperty@@Base+0xfb20>
+   84698:	e59d0004 	ldr	r0, [sp, #4]
+   8469c:	e28dd01c 	add	sp, sp, #28
+   846a0:	e49df004 	pop	{pc}		@ (ldr pc, [sp], #4)
+   846a4:	e92d4007 	push	{r0, r1, r2, lr}
+   846a8:	e3a0c000 	mov	ip, #0
+   846ac:	e28d3008 	add	r3, sp, #8
+   846b0:	e523c004 	str	ip, [r3, #-4]!
+   846b4:	eb001d10 	bl	8bafc <AirPlayReceiverServerPlatformCopyProperty@@Base+0xfc60>
+   846b8:	e59d0004 	ldr	r0, [sp, #4]
+   846bc:	e28dd00c 	add	sp, sp, #12
+   846c0:	e49df004 	pop	{pc}		@ (ldr pc, [sp], #4)
+   846c4:	e92d40f0 	push	{r4, r5, r6, r7, lr}
+   846c8:	e24dd01c 	sub	sp, sp, #28
+   846cc:	e1a07001 	mov	r7, r1
+   846d0:	e1a0100d 	mov	r1, sp
+   846d4:	e1a06002 	mov	r6, r2
+   846d8:	e1a05003 	mov	r5, r3
+   846dc:	e59d403c 	ldr	r4, [sp, #60]	@ 0x3c
+   846e0:	eb000d54 	bl	87c38 <AirPlayReceiverServerPlatformCopyProperty@@Base+0xbd9c>
+   846e4:	e59d3000 	ldr	r3, [sp]
+   846e8:	e59d200c 	ldr	r2, [sp, #12]
+   846ec:	e5873000 	str	r3, [r7]
+   846f0:	e59d3004 	ldr	r3, [sp, #4]
+   846f4:	e3540000 	cmp	r4, #0
+   846f8:	e5863000 	str	r3, [r6]
+   846fc:	e59d3008 	ldr	r3, [sp, #8]
+   84700:	e3a00000 	mov	r0, #0
+   84704:	e5853000 	str	r3, [r5]
+   84708:	e59d3030 	ldr	r3, [sp, #48]	@ 0x30
+   8470c:	e5832000 	str	r2, [r3]
+   84710:	e59d2010 	ldr	r2, [sp, #16]
+   84714:	e59d3034 	ldr	r3, [sp, #52]	@ 0x34
+   84718:	e5832000 	str	r2, [r3]
+   8471c:	e59d3038 	ldr	r3, [sp, #56]	@ 0x38
+
+===== HTTP CLIENT SEND WORK HANDOFF =====
+
+/repo/stock_analysis/sdDongle:     file format elf32-littlearm
+
+
+Disassembly of section .text:
+
+000a6040 <__LibDispatch_SelectDrain@@Base+0x1c94>:
+   a6040:	e92d4010 	push	{r4, lr}
+   a6044:	e59048ec 	ldr	r4, [r0, #2284]	@ 0x8ec
+   a6048:	e3a03000 	mov	r3, #0
+   a604c:	e5803008 	str	r3, [r0, #8]
+   a6050:	e59434a0 	ldr	r3, [r4, #1184]	@ 0x4a0
+   a6054:	e5830000 	str	r0, [r3]
+   a6058:	e2800008 	add	r0, r0, #8
+   a605c:	e58404a0 	str	r0, [r4, #1184]	@ 0x4a0
+   a6060:	e1a00004 	mov	r0, r4
+   a6064:	ebfffce4 	bl	a53fc <__LibDispatch_SelectDrain@@Base+0x1050>
+   a6068:	e1a00004 	mov	r0, r4
+   a606c:	e8bd4010 	pop	{r4, lr}
+   a6070:	eaff7300 	b	82c78 <AirPlayReceiverServerPlatformCopyProperty@@Base+0x6ddc>
+   a6074:	e92d4030 	push	{r4, r5, lr}
+
+===== SERIAL DISPATCH LAST WORK RELEASE =====
+
+/repo/stock_analysis/sdDongle:     file format elf32-littlearm
+
+
+Disassembly of section .text:
+
+000a3040 <__dispatch_source_free@@Base+0x2958>:
+   a3040:	e08f3003 	add	r3, pc, r3
+   a3044:	ebffef0a 	bl	9ec74 <_IPCAgent_ReadHandler@@Base+0x112c>
+   a3048:	e2847030 	add	r7, r4, #48	@ 0x30
+   a304c:	e5945030 	ldr	r5, [r4, #48]	@ 0x30
+   a3050:	e3550000 	cmp	r5, #0
+   a3054:	0a000016 	beq	a30b4 <__dispatch_source_free@@Base+0x29cc>
+   a3058:	e594303c 	ldr	r3, [r4, #60]	@ 0x3c
+   a305c:	e3530000 	cmp	r3, #0
+   a3060:	ca000013 	bgt	a30b4 <__dispatch_source_free@@Base+0x29cc>
+   a3064:	e5953000 	ldr	r3, [r5]
+   a3068:	e594002c 	ldr	r0, [r4, #44]	@ 0x2c
+   a306c:	e3530000 	cmp	r3, #0
+   a3070:	05847034 	streq	r7, [r4, #52]	@ 0x34
+   a3074:	e5843030 	str	r3, [r4, #48]	@ 0x30
+   a3078:	03a06001 	moveq	r6, #1
+   a307c:	13a06000 	movne	r6, #0
+   a3080:	ebfdd518 	bl	184e8 <pthread_mutex_unlock@plt>
+   a3084:	e5953004 	ldr	r3, [r5, #4]
+   a3088:	e5950008 	ldr	r0, [r5, #8]
+   a308c:	e12fff33 	blx	r3
+   a3090:	e1a00005 	mov	r0, r5
+   a3094:	ebfdd3e4 	bl	1802c <free@plt>
+   a3098:	e3560000 	cmp	r6, #0
+   a309c:	0a000001 	beq	a30a8 <__dispatch_source_free@@Base+0x29c0>
+   a30a0:	e1a00004 	mov	r0, r4
+   a30a4:	ebfff504 	bl	a04bc <__dispatch_semaphore_free@@Base+0x138>
+   a30a8:	e594002c 	ldr	r0, [r4, #44]	@ 0x2c
+   a30ac:	ebfdd5a9 	bl	18758 <pthread_mutex_lock@plt>
+   a30b0:	eaffffe5 	b	a304c <__dispatch_source_free@@Base+0x2964>
+   a30b4:	e28dd014 	add	sp, sp, #20
+   a30b8:	e8bd80f0 	pop	{r4, r5, r6, r7, pc}
+
+===== GLOBAL DISPATCH QUEUE RETIREMENT =====
+
+/repo/stock_analysis/sdDongle:     file format elf32-littlearm
+
+
+Disassembly of section .text:
+
+000a33b4 <__LibDispatchCF_SourcePerform@@Base+0x1e8>:
+   a33b4:	e59f3080 	ldr	r3, [pc, #128]	@ a343c <__LibDispatchCF_SourcePerform@@Base+0x270>
+   a33b8:	e59f6080 	ldr	r6, [pc, #128]	@ a3440 <__LibDispatchCF_SourcePerform@@Base+0x274>
+   a33bc:	e08f3003 	add	r3, pc, r3
+   a33c0:	e5934024 	ldr	r4, [r3, #36]	@ 0x24
+   a33c4:	e08f6006 	add	r6, pc, r6
+   a33c8:	e594002c 	ldr	r0, [r4, #44]	@ 0x2c
+   a33cc:	ebfdd4e1 	bl	18758 <pthread_mutex_lock@plt>
+   a33d0:	e5943004 	ldr	r3, [r4, #4]
+   a33d4:	e3530000 	cmp	r3, #0
+   a33d8:	da00000a 	ble	a3408 <__LibDispatchCF_SourcePerform@@Base+0x23c>
+   a33dc:	e1a00004 	mov	r0, r4
+   a33e0:	ebfffee8 	bl	a2f88 <__dispatch_source_free@@Base+0x28a0>
+   a33e4:	e5d63028 	ldrb	r3, [r6, #40]	@ 0x28
+   a33e8:	e3530000 	cmp	r3, #0
+   a33ec:	1a000003 	bne	a3400 <__LibDispatchCF_SourcePerform@@Base+0x234>
+   a33f0:	e594102c 	ldr	r1, [r4, #44]	@ 0x2c
+   a33f4:	e596002c 	ldr	r0, [r6, #44]	@ 0x2c
+   a33f8:	ebfdd58a 	bl	18a28 <pthread_cond_wait@plt>
+   a33fc:	eafffff8 	b	a33e4 <__LibDispatchCF_SourcePerform@@Base+0x218>
+   a3400:	e5c65028 	strb	r5, [r6, #40]	@ 0x28
+   a3404:	eafffff1 	b	a33d0 <__LibDispatchCF_SourcePerform@@Base+0x204>
+   a3408:	e59f3034 	ldr	r3, [pc, #52]	@ a3444 <__LibDispatchCF_SourcePerform@@Base+0x278>
+   a340c:	e3a02000 	mov	r2, #0
+   a3410:	e08f3003 	add	r3, pc, r3
+   a3414:	e594002c 	ldr	r0, [r4, #44]	@ 0x2c
+   a3418:	e5832024 	str	r2, [r3, #36]	@ 0x24
+   a341c:	ebfdd431 	bl	184e8 <pthread_mutex_unlock@plt>
+   a3420:	e1a00004 	mov	r0, r4
+   a3424:	e28dd010 	add	sp, sp, #16
+   a3428:	e8bd4070 	pop	{r4, r5, r6, lr}
+   a342c:	eafff361 	b	a01b8 <__dispatch_queue_free@@Base>
+   a3430:	0006679e 	muleq	r6, lr, r7
+   a3434:	000005d4 	ldrdeq	r0, [r0], -r4
+   a3438:	00066bc9 	andeq	r6, r6, r9, asr #23
+   a343c:	0009852c 	andeq	r8, r9, ip, lsr #10
+   a3440:	00098524 	andeq	r8, r9, r4, lsr #10
+   a3444:	000984d8 	ldrdeq	r8, [r9], -r8	@ <UNPREDICTABLE>
+
+===== CAR SIDE HTTP CLIENT INVALIDATE RELEASE =====
+
+/repo/stock_analysis/sdDongle:     file format elf32-littlearm
+
+
+Disassembly of section .text:
+
+0002a76c <iap2_sim_msg_identify@@Base+0x8ed4>:
+   2a76c:	e59f305c 	ldr	r3, [pc, #92]	@ 2a7d0 <iap2_sim_msg_identify@@Base+0x8f38>
+   2a770:	e59f205c 	ldr	r2, [pc, #92]	@ 2a7d4 <iap2_sim_msg_identify@@Base+0x8f3c>
+   2a774:	e08f3003 	add	r3, pc, r3
+   2a778:	e92d4070 	push	{r4, r5, r6, lr}
+   2a77c:	e7934002 	ldr	r4, [r3, r2]
+   2a780:	e5940000 	ldr	r0, [r4]
+   2a784:	e3500000 	cmp	r0, #0
+   2a788:	0a000004 	beq	2a7a0 <iap2_sim_msg_identify@@Base+0x8f08>
+   2a78c:	eb01ef7c 	bl	a6584 <__LibDispatch_SelectDrain@@Base+0x21d8>
+   2a790:	e5940000 	ldr	r0, [r4]
+   2a794:	eb016137 	bl	82c78 <AirPlayReceiverServerPlatformCopyProperty@@Base+0x6ddc>
+   2a798:	e3a03000 	mov	r3, #0
+   2a79c:	e5843000 	str	r3, [r4]
+   2a7a0:	e59f4030 	ldr	r4, [pc, #48]	@ 2a7d8 <iap2_sim_msg_identify@@Base+0x8f40>
+   2a7a4:	e3a05000 	mov	r5, #0
+   2a7a8:	e08f4004 	add	r4, pc, r4
+   2a7ac:	e5940000 	ldr	r0, [r4]
+
+===== RECORD BYTES 0x134e8c AND NEIGHBOR DESCRIPTORS =====
+
+/repo/stock_analysis/sdDongle:     file format elf32-littlearm
+
+Contents of section .data.rel.ro:
+ 134e80 ca9a1000 00000000 00000000 00000000  ................
+ 134e90 beab1000 00000000 00000000 084b0a00  .............K..
+ 134ea0 00000000 00000000 00000000 00000000  ................
+ 134eb0 00000000 00000000 00000000 10ad1000  ................
+ 134ec0 00000000 00000000 c06c0a00 00000000  .........l......
+
+===== CLASS NAME STRING SOURCE =====
+
+/repo/stock_analysis/sdDongle:     file format elf32-littlearm
+
+Contents of section .rodata:
+ 10abb0 54545043 6c69656e 74436f72 65004854  TTPClientCore.HT
+ 10abc0 5450436c 69656e74 005f4854 54504d65  TPClient._HTTPMe
+ 10abd0 73736167 65476574 54797065 49440048  ssageGetTypeID.H
+ 10abe0 5454504d 65737361 67654372 65617465  TTPMessageCreate
+ 10abf0 00485454 504d6573 73616765 53657442  .HTTPMessageSetB
+ 10ac00 6f647950 74720048 5454504d 65737361  odyPtr.HTTPMessa
+ 10ac10 67655365 74426f64 794c656e 67746800  geSetBodyLength.
+ 10ac20 48545450 4d657373 61676552 6561644d  HTTPMessageReadM
+ 10ac30 65737361 6765002f 686f6d65 2f637874  essage./home/cxt
+
+===== ELF RELOCATION TABLES =====
+
+Relocation section '.rel.dyn' at offset 0x71e8 contains 13 entries:
+ Offset     Info    Type                Sym. Value  Symbol's Name
+00136660  00001b15 R_ARM_GLOB_DAT         00000000   mfi_certificate
+001367b0  0000fa15 R_ARM_GLOB_DAT         00000000   __ctype_toupper
+00136804  00014215 R_ARM_GLOB_DAT         00000000   __ctype_tolower
+00136858  00018015 R_ARM_GLOB_DAT         00000000   mfi_cert_len
+0013688c  0001a715 R_ARM_GLOB_DAT         00000000   stdout
+00136890  0001a915 R_ARM_GLOB_DAT         00000000   in6addr_any
+001368b0  0001c415 R_ARM_GLOB_DAT         00000000   stderr
+001368fc  0001f215 R_ARM_GLOB_DAT         00000000   __ctype_b
+001350cc  0000e214 R_ARM_COPY             001350cc   _ZTVN10__cxxabiv117__class_type_infoE@CXXABI_1.3
+001350f8  0001a814 R_ARM_COPY             001350f8   _ZTVN10__cxxabiv120__si_class_type_infoE@CXXABI_1.3
+00135124  00024814 R_ARM_COPY             00135124   _ZTVN10__cxxabiv121__vmi_class_type_infoE@CXXABI_1.3
+00135150  00024a14 R_ARM_COPY             00135150   _ZTI6Thread
+00135158  00025e14 R_ARM_COPY             00135158   _ZTI12StateMachine
+
+Relocation section '.rel.plt' at offset 0x7250 contains 391 entries:
+ Offset     Info    Type                Sym. Value  Symbol's Name
+0013600c  00000116 R_ARM_JUMP_SLOT        00000000   libusb_free_config_descriptor
+00136010  00000216 R_ARM_JUMP_SLOT        00000000   start_timer
+00136014  00000416 R_ARM_JUMP_SLOT        00000000   prop_get_int
+00136018  00000516 R_ARM_JUMP_SLOT        00000000   pthread_cond_signal
+0013601c  00000916 R_ARM_JUMP_SLOT        00000000   __aeabi_d2uiz@GCC_3.5
+00136020  00000c16 R_ARM_JUMP_SLOT        00000000   _ZN13SoftAPService8instanceEv
+00136024  00000e16 R_ARM_JUMP_SLOT        00000000   _Znwj@GLIBCXX_3.4
+00136028  00000f16 R_ARM_JUMP_SLOT        00000000   snd_pcm_status_sizeof
+0013602c  00001416 R_ARM_JUMP_SLOT        00000000   strncasecmp
+00136030  00001616 R_ARM_JUMP_SLOT        00000000   signal
+00136034  00001716 R_ARM_JUMP_SLOT        00000000   snd_pcm_close
+00136038  00001816 R_ARM_JUMP_SLOT        00000000   __aeabi_uldivmod@GCC_3.5
+0013603c  00001c16 R_ARM_JUMP_SLOT        00000000   remove_apple_gadget
+00136040  00001d16 R_ARM_JUMP_SLOT        00000000   __aeabi_dcmpeq@GCC_3.5
+00136044  00001e16 R_ARM_JUMP_SLOT        00000000   connect
+00136048  00001f16 R_ARM_JUMP_SLOT        00000000   strncpy
+0013604c  00002116 R_ARM_JUMP_SLOT        00000000   realpath
+00136050  00002316 R_ARM_JUMP_SLOT        00000000   exit
+00136054  00002416 R_ARM_JUMP_SLOT        00000000   strlen
+00136058  00002816 R_ARM_JUMP_SLOT        00000000   select
+0013605c  00002916 R_ARM_JUMP_SLOT        00000000   check_net_interface_is_up
+00136060  00002a16 R_ARM_JUMP_SLOT        00000000   printf
+00136064  00002b16 R_ARM_JUMP_SLOT        00000000   _ZN9HeartBeatC1Ev
+00136068  00002f16 R_ARM_JUMP_SLOT        00000000   snd_pcm_hw_params_set_periods
+0013606c  00003016 R_ARM_JUMP_SLOT        00000000   strdup
+00136070  00003216 R_ARM_JUMP_SLOT        00000000   _ZN12ScreenRecordD1Ev
+00136074  00003516 R_ARM_JUMP_SLOT        00000000   libusb_has_capability
+00136078  00003616 R_ARM_JUMP_SLOT        00000000   __cmsg_nxthdr
+0013607c  00003816 R_ARM_JUMP_SLOT        00000000   libusb_open
+00136080  00003916 R_ARM_JUMP_SLOT        00000000   DNSServiceReconfirmRecord
+00136084  00003a16 R_ARM_JUMP_SLOT        00000000   __bswapsi2@GCC_4.3.0
+00136088  00003c16 R_ARM_JUMP_SLOT        00000000   gmtime_r
+0013608c  00003e16 R_ARM_JUMP_SLOT        00000000   free
+00136090  00003f16 R_ARM_JUMP_SLOT        00000000   abort
+00136094  00004016 R_ARM_JUMP_SLOT        00000000   _ZN10AoaService14addAoaListenerEP12IAoaListener
+00136098  00004116 R_ARM_JUMP_SLOT        00000000   memmove
+0013609c  00004216 R_ARM_JUMP_SLOT        00000000   aacDecoder_SetParam
+001360a0  00004616 R_ARM_JUMP_SLOT        00000000   __aeabi_fcmple@GCC_3.5
+001360a4  00004816 R_ARM_JUMP_SLOT        00000000   _ZN9HeartBeat5startEv
+001360a8  00004d16 R_ARM_JUMP_SLOT        00000000   TXTRecordGetBytesPtr
+001360ac  00004e16 R_ARM_JUMP_SLOT        00000000   _ZN12StateMachine12registStatesEP7SFStatePKci
+001360b0  00004f16 R_ARM_JUMP_SLOT        00000000   fork
+001360b4  00005016 R_ARM_JUMP_SLOT        00000000   create_timer
+001360b8  00005116 R_ARM_JUMP_SLOT        00000000   opus_decode
+001360bc  00005216 R_ARM_JUMP_SLOT        00000000   snd_pcm_open
+001360c0  00005416 R_ARM_JUMP_SLOT        00000000   getIpAddress
+001360c4  00005a16 R_ARM_JUMP_SLOT        00000000   pthread_mutex_init
+001360c8  00005b16 R_ARM_JUMP_SLOT        00000000   get_sps_pps_size
+001360cc  00005e16 R_ARM_JUMP_SLOT        00000000   _ZNKSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE6substrEjj@GLIBCXX_3.4.21
+001360d0  00005f16 R_ARM_JUMP_SLOT        00000000   pthread_create
+001360d4  00006016 R_ARM_JUMP_SLOT        00000000   __aeabi_i2f@GCC_3.5
+001360d8  00006216 R_ARM_JUMP_SLOT        00000000   fprintf
+001360dc  00006316 R_ARM_JUMP_SLOT        00000000   libusb_detach_kernel_driver
+001360e0  00006416 R_ARM_JUMP_SLOT        00000000   __aeabi_dcmpge@GCC_3.5
+001360e4  00006516 R_ARM_JUMP_SLOT        00000000   TXTRecordGetValuePtr
+001360e8  00006616 R_ARM_JUMP_SLOT        00000000   strpbrk
+001360ec  00006716 R_ARM_JUMP_SLOT        00000000   iap2_get_config_string
+001360f0  00006916 R_ARM_JUMP_SLOT        00000000   strsep
+001360f4  00006a16 R_ARM_JUMP_SLOT        00000000   freeifaddrs
+001360f8  00006d16 R_ARM_JUMP_SLOT        00000000   _ZN9Semaphore4downEv
+001360fc  00007116 R_ARM_JUMP_SLOT        00000000   __aeabi_dmul@GCC_3.5
+00136100  00007216 R_ARM_JUMP_SLOT        00000000   __cxa_begin_catch@CXXABI_1.3
+00136104  00007316 R_ARM_JUMP_SLOT        00000000   setvbuf
+00136108  00007516 R_ARM_JUMP_SLOT        00000000   __aeabi_uidivmod@GCC_3.5
+0013610c  00007716 R_ARM_JUMP_SLOT        00000000   switch_board_mode
+00136110  00007916 R_ARM_JUMP_SLOT        00000000   set_timer_timeout_callback
+00136114  00007a16 R_ARM_JUMP_SLOT        00000000   atoi
+00136118  00007b16 R_ARM_JUMP_SLOT        00000000   libusb_get_device_list
+0013611c  00007c16 R_ARM_JUMP_SLOT        00000000   pthread_cond_broadcast
+00136120  00007d16 R_ARM_JUMP_SLOT        00000000   getpeername
+00136124  00007e16 R_ARM_JUMP_SLOT        00000000   puts
+00136128  00008116 R_ARM_JUMP_SLOT        00000000   snd_pcm_status_get_delay
+0013612c  00008216 R_ARM_JUMP_SLOT        00000000   __aeabi_ui2f@GCC_3.5
+00136130  00008416 R_ARM_JUMP_SLOT        00000000   pthread_cond_destroy
+00136134  00008516 R_ARM_JUMP_SLOT        00018224   _ZN12StateMachine3runEv
+00136138  00008616 R_ARM_JUMP_SLOT        00000000   delete_timer
+0013613c  00008716 R_ARM_JUMP_SLOT        00000000   _ZN10AoaService19usbSwitchNormalModeEv
+00136140  00008916 R_ARM_JUMP_SLOT        00000000   libusb_control_transfer
+00136144  00008d16 R_ARM_JUMP_SLOT        00000000   __uClibc_main
+00136148  00009016 R_ARM_JUMP_SLOT        00000000   is_driver_loaded
+0013614c  00009116 R_ARM_JUMP_SLOT        00000000   _ZN12StateMachineD2Ev
+00136150  00009316 R_ARM_JUMP_SLOT        00000000   fcntl
+00136154  00009416 R_ARM_JUMP_SLOT        00000000   vasprintf
+00136158  00009516 R_ARM_JUMP_SLOT        00000000   libusb_error_name
+0013615c  00009616 R_ARM_JUMP_SLOT        00000000   shutdown
+00136160  00009716 R_ARM_JUMP_SLOT        00000000   pthread_self
+00136164  00009816 R_ARM_JUMP_SLOT        00000000   _ZN6Thread5startEv
+00136168  00009a16 R_ARM_JUMP_SLOT        00000000   get_ak3918_serial_number
+0013616c  00009e16 R_ARM_JUMP_SLOT        00000000   syslog
+00136170  00009f16 R_ARM_JUMP_SLOT        00000000   remove
+00136174  0000a016 R_ARM_JUMP_SLOT        00000000   asprintf
+00136178  0000a116 R_ARM_JUMP_SLOT        00000000   _ZN10AoaServiceC1Ei
+0013617c  0000a216 R_ARM_JUMP_SLOT        00000000   pthread_key_create
+00136180  0000a316 R_ARM_JUMP_SLOT        00000000   libusb_reset_device
+00136184  0000a816 R_ARM_JUMP_SLOT        00000000   _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE9_M_assignERKS4_@GLIBCXX_3.4.21
+00136188  0000a916 R_ARM_JUMP_SLOT        00000000   cfg_do_set
+0013618c  0000ab16 R_ARM_JUMP_SLOT        00000000   snd_pcm_drain
+00136190  0000ac16 R_ARM_JUMP_SLOT        00000000   ioctl
+00136194  0000ad16 R_ARM_JUMP_SLOT        00000000   libusb_exit
+00136198  0000ae16 R_ARM_JUMP_SLOT        00000000   sem_wait
+0013619c  0000af16 R_ARM_JUMP_SLOT        00000000   __aeabi_i2d@GCC_3.5
+001361a0  0000b016 R_ARM_JUMP_SLOT        00000000   sem_init
+001361a4  0000b116 R_ARM_JUMP_SLOT        00000000   __aeabi_ddiv@GCC_3.5
+001361a8  0000b216 R_ARM_JUMP_SLOT        00000000   sleep
+001361ac  0000b316 R_ARM_JUMP_SLOT        00000000   TXTRecordCreate
+001361b0  0000b816 R_ARM_JUMP_SLOT        00000000   build_apple_gadget
+001361b4  0000bb16 R_ARM_JUMP_SLOT        00000000   _Z17led_manager_startii
+001361b8  0000bd16 R_ARM_JUMP_SLOT        00000000   print_hex
+001361bc  0000be16 R_ARM_JUMP_SLOT        00000000   __register_frame_info
+001361c0  0000c316 R_ARM_JUMP_SLOT        00000000   snprintf
+001361c4  0000c416 R_ARM_JUMP_SLOT        00000000   send
+001361c8  0000c516 R_ARM_JUMP_SLOT        00000000   fseeko
+001361cc  0000c716 R_ARM_JUMP_SLOT        00000000   sscanf
+001361d0  0000c816 R_ARM_JUMP_SLOT        00000000   backtrace_symbols
+001361d4  0000ca16 R_ARM_JUMP_SLOT        00000000   getuid
+001361d8  0000cb16 R_ARM_JUMP_SLOT        00000000   getpid
+001361dc  0000cc16 R_ARM_JUMP_SLOT        00000000   getpwuid_r
+001361e0  0000ce16 R_ARM_JUMP_SLOT        00000000   _ZN12StateMachineC2Eii
+001361e4  0000cf16 R_ARM_JUMP_SLOT        00000000   libusb_free_device_list
+001361e8  0000d216 R_ARM_JUMP_SLOT        00000000   _ZN6ThreadD2Ev
+001361ec  0000d416 R_ARM_JUMP_SLOT        00000000   __aeabi_f2d@GCC_3.5
+001361f0  0000d716 R_ARM_JUMP_SLOT        00000000   getifaddrs
+001361f4  0000d816 R_ARM_JUMP_SLOT        00000000   pthread_getspecific
+001361f8  0000d916 R_ARM_JUMP_SLOT        00000000   fread
+001361fc  0000db16 R_ARM_JUMP_SLOT        00000000   strcmp
+00136200  0000dc16 R_ARM_JUMP_SLOT        00000000   sem_destroy
+00136204  0000de16 R_ARM_JUMP_SLOT        00000000   munmap
+00136208  0000df16 R_ARM_JUMP_SLOT        00000000   libusb_unlock_events
+0013620c  0000e116 R_ARM_JUMP_SLOT        00000000   _ZN9BtService19addBtNotifyListenerEP17IBtNotifyListener
+00136210  0000e316 R_ARM_JUMP_SLOT        00000000   _ZSt19__throw_logic_errorPKc@GLIBCXX_3.4
+00136214  0000e416 R_ARM_JUMP_SLOT        00000000   prop_set_int
+00136218  0000e816 R_ARM_JUMP_SLOT        00000000   dlopen
+0013621c  0000e916 R_ARM_JUMP_SLOT        00000000   aacDecoder_DecodeFrame
+00136220  0000ec16 R_ARM_JUMP_SLOT        00000000   pthread_mutex_unlock
+00136224  0000ee16 R_ARM_JUMP_SLOT        00000000   getsockopt
+00136228  0000ef16 R_ARM_JUMP_SLOT        00000000   mmap
+0013622c  0000f016 R_ARM_JUMP_SLOT        00000000   pthread_setschedparam
+00136230  0000f116 R_ARM_JUMP_SLOT        00000000   snd_pcm_recover
+00136234  0000f316 R_ARM_JUMP_SLOT        00000000   snd_pcm_hw_params
+00136238  0000f516 R_ARM_JUMP_SLOT        00000000   snd_pcm_wait
+0013623c  0000f616 R_ARM_JUMP_SLOT        00000000   snd_pcm_hw_params_set_format
+00136240  0000f716 R_ARM_JUMP_SLOT        00000000   recv
+00136244  0000f916 R_ARM_JUMP_SLOT        00000000   mfi_process_challenge
+00136248  0000fe16 R_ARM_JUMP_SLOT        00000000   mfi_get_certificate
+0013624c  0000ff16 R_ARM_JUMP_SLOT        00000000   _ZN9BtService11btReconnectEv
+00136250  00010016 R_ARM_JUMP_SLOT        00000000   pthread_key_delete
+00136254  00010116 R_ARM_JUMP_SLOT        00000000   __aeabi_dcmplt@GCC_3.5
+00136258  00010216 R_ARM_JUMP_SLOT        00000000   strrchr
+0013625c  00010316 R_ARM_JUMP_SLOT        00000000   __aeabi_dcmple@GCC_3.5
+00136260  00010416 R_ARM_JUMP_SLOT        00000000   prop_get_string
+00136264  00010616 R_ARM_JUMP_SLOT        00000000   _ZN6Thread4joinEv
+00136268  00010716 R_ARM_JUMP_SLOT        00000000   backtrace
+0013626c  00010816 R_ARM_JUMP_SLOT        00000000   ftruncate
+00136270  00010916 R_ARM_JUMP_SLOT        00000000   sysconf
+00136274  00010a16 R_ARM_JUMP_SLOT        00000000   pthread_attr_init
+00136278  00010e16 R_ARM_JUMP_SLOT        00000000   memset
+0013627c  00011016 R_ARM_JUMP_SLOT        00000000   tolower
+00136280  00011116 R_ARM_JUMP_SLOT        00000000   __aeabi_d2lz@GCC_3.5
+00136284  00011216 R_ARM_JUMP_SLOT        00000000   open_local_socket
+00136288  00011316 R_ARM_JUMP_SLOT        00000000   read
+0013628c  00011416 R_ARM_JUMP_SLOT        00000000   strndup
+00136290  00011716 R_ARM_JUMP_SLOT        00000000   _ZN9SemaphoreC1Ev
+00136294  00011816 R_ARM_JUMP_SLOT        00000000   listen
+00136298  00011916 R_ARM_JUMP_SLOT        00000000   snd_pcm_hw_params_malloc
+0013629c  00011b16 R_ARM_JUMP_SLOT        00000000   unlink
+001362a0  00011c16 R_ARM_JUMP_SLOT        00000000   perror
+001362a4  00011d16 R_ARM_JUMP_SLOT        00000000   fflush
+001362a8  00012116 R_ARM_JUMP_SLOT        00000000   aacDecoder_Close
+001362ac  00012216 R_ARM_JUMP_SLOT        00000000   snd_pcm_prepare
+001362b0  00012316 R_ARM_JUMP_SLOT        00000000   opus_encoder_create
+001362b4  00012416 R_ARM_JUMP_SLOT        00000000   fopen
+001362b8  00012516 R_ARM_JUMP_SLOT        00000000   pthread_cond_init
+001362bc  00012616 R_ARM_JUMP_SLOT        00000000   strcpy
+001362c0  00012716 R_ARM_JUMP_SLOT        00000000   bzero
+001362c4  00012816 R_ARM_JUMP_SLOT        00000000   check_net_interface_is_exist
+001362c8  00012916 R_ARM_JUMP_SLOT        00000000   __errno_location
+001362cc  00012a16 R_ARM_JUMP_SLOT        00000000   __aeabi_fdiv@GCC_3.5
+001362d0  00012c16 R_ARM_JUMP_SLOT        00000000   fscanf
+001362d4  00012e16 R_ARM_JUMP_SLOT        00000000   _ZdlPv@GLIBCXX_3.4
+001362d8  00012f16 R_ARM_JUMP_SLOT        00000000   write
+001362dc  00013016 R_ARM_JUMP_SLOT        00000000   _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEpLEPKc@GLIBCXX_3.4.21
+001362e0  00013116 R_ARM_JUMP_SLOT        00000000   mkstemp
+001362e4  00013316 R_ARM_JUMP_SLOT        00000000   time
+001362e8  00013416 R_ARM_JUMP_SLOT        00000000   libusb_hotplug_register_callback
+001362ec  00013516 R_ARM_JUMP_SLOT        00000000   fwrite
+001362f0  00013616 R_ARM_JUMP_SLOT        00000000   pthread_mutex_lock
+001362f4  00013716 R_ARM_JUMP_SLOT        00000000   opus_decoder_create
+001362f8  00013816 R_ARM_JUMP_SLOT        00000000   memchr
+001362fc  00013916 R_ARM_JUMP_SLOT        00000000   DNSServiceQueryRecord
+00136300  00013a16 R_ARM_JUMP_SLOT        00000000   TXTRecordGetLength
+00136304  00013e16 R_ARM_JUMP_SLOT        00000000   pthread_attr_setstacksize
+00136308  00014016 R_ARM_JUMP_SLOT        00000000   __aeabi_l2f@GCC_3.5
+0013630c  00014316 R_ARM_JUMP_SLOT        00000000   memcmp
+00136310  00014516 R_ARM_JUMP_SLOT        00000000   fseek
+00136314  00014616 R_ARM_JUMP_SLOT        00000000   pthread_attr_setdetachstate
+00136318  00014916 R_ARM_JUMP_SLOT        00000000   _Z12send_versionh
+0013631c  00014a16 R_ARM_JUMP_SLOT        00000000   inet_ntop
+00136320  00014b16 R_ARM_JUMP_SLOT        00000000   DNSServiceBrowse
+00136324  00014c16 R_ARM_JUMP_SLOT        00000000   writen
+00136328  00015016 R_ARM_JUMP_SLOT        00000000   fsync
+0013632c  00015316 R_ARM_JUMP_SLOT        00000000   getsockname
+00136330  00015616 R_ARM_JUMP_SLOT        00000000   strftime
+00136334  00015716 R_ARM_JUMP_SLOT        00000000   rename
+00136338  00015816 R_ARM_JUMP_SLOT        00000000   check_board_auth
+0013633c  00015a16 R_ARM_JUMP_SLOT        00000000   libusb_hotplug_deregister_callback
+00136340  00015b16 R_ARM_JUMP_SLOT        00000000   if_indextoname
+00136344  00015c16 R_ARM_JUMP_SLOT        00000000   _ZN9BtServiceD1Ev
+00136348  00015d16 R_ARM_JUMP_SLOT        00000000   __aeabi_d2ulz@GCC_3.5
+0013634c  00015e16 R_ARM_JUMP_SLOT        00000000   snd_pcm_get_params
+00136350  00016116 R_ARM_JUMP_SLOT        00000000   _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE13_S_copy_charsEPcPKcS7_@GLIBCXX_3.4.21
+00136354  00016216 R_ARM_JUMP_SLOT        00000000   pthread_getschedparam
+00136358  00016316 R_ARM_JUMP_SLOT        00000000   libusb_interrupt_transfer
+0013635c  00016616 R_ARM_JUMP_SLOT        00000000   __cxa_end_cleanup@CXXABI_1.3
+00136360  00016716 R_ARM_JUMP_SLOT        00000000   libusb_get_device_descriptor
+00136364  00016816 R_ARM_JUMP_SLOT        00000000   snd_pcm_hw_params_any
+00136368  00016a16 R_ARM_JUMP_SLOT        00000000   pthread_mutex_destroy
+0013636c  00016b16 R_ARM_JUMP_SLOT        00000000   strtol
+00136370  00016c16 R_ARM_JUMP_SLOT        00000000   __aeabi_fmul@GCC_3.5
+00136374  00016e16 R_ARM_JUMP_SLOT        00000000   aacDecoder_Fill
+00136378  00016f16 R_ARM_JUMP_SLOT        00000000   _ZN10AoaServiceD1Ev
+0013637c  00017016 R_ARM_JUMP_SLOT        00000000   opus_encoder_destroy
+00136380  00017216 R_ARM_JUMP_SLOT        00000000   strcasecmp
+00136384  00017316 R_ARM_JUMP_SLOT        00000000   malloc
+00136388  00017416 R_ARM_JUMP_SLOT        00000000   __aeabi_dsub@GCC_3.5
+0013638c  00017516 R_ARM_JUMP_SLOT        00000000   DNSServiceRefSockFD
+00136390  00017616 R_ARM_JUMP_SLOT        00000000   __aeabi_ldivmod@GCC_3.5
+00136394  00017716 R_ARM_JUMP_SLOT        00000000   gettimeofday
+00136398  00017916 R_ARM_JUMP_SLOT        00000000   libusb_claim_interface
+0013639c  00017b16 R_ARM_JUMP_SLOT        00000000   libusb_bulk_transfer
+001363a0  00017e16 R_ARM_JUMP_SLOT        00000000   snd_strerror
+001363a4  00017f16 R_ARM_JUMP_SLOT        00000000   _ZN13SoftAPServiceD1Ev
+001363a8  00018116 R_ARM_JUMP_SLOT        00000000   __aeabi_dadd@GCC_3.5
+001363ac  00018216 R_ARM_JUMP_SLOT        00000000   nanosleep
+001363b0  00018416 R_ARM_JUMP_SLOT        00000000   __aeabi_f2uiz@GCC_3.5
+001363b4  00018516 R_ARM_JUMP_SLOT        00000000   calloc
+001363b8  00018616 R_ARM_JUMP_SLOT        00000000   snd_pcm_name
+001363bc  00018716 R_ARM_JUMP_SLOT        00000000   _ZN9BtService5startEv
+001363c0  00018b16 R_ARM_JUMP_SLOT        00000000   _ZN9SemaphoreD1Ev
+001363c4  00018c16 R_ARM_JUMP_SLOT        00000000   __aeabi_f2iz@GCC_3.5
+001363c8  00018f16 R_ARM_JUMP_SLOT        00000000   cfg_get_int
+001363cc  00019016 R_ARM_JUMP_SLOT        00000000   ark_get_info_int
+001363d0  00019116 R_ARM_JUMP_SLOT        00000000   aacDecoder_Open
+001363d4  00019316 R_ARM_JUMP_SLOT        00000000   _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE10_M_disposeEv@GLIBCXX_3.4.21
+001363d8  00019516 R_ARM_JUMP_SLOT        00000000   sem_post
+001363dc  00019616 R_ARM_JUMP_SLOT        00000000   ark_set_info
+001363e0  00019716 R_ARM_JUMP_SLOT        00000000   pthread_cond_wait
+001363e4  00019816 R_ARM_JUMP_SLOT        00000000   libusb_handle_events_completed
+001363e8  00019916 R_ARM_JUMP_SLOT        00000000   _ZN5MutexD1Ev
+001363ec  00019b16 R_ARM_JUMP_SLOT        00000000   rand
+001363f0  00019c16 R_ARM_JUMP_SLOT        00000000   strcspn
+001363f4  00019d16 R_ARM_JUMP_SLOT        00000000   _Z16get_auth_status1v
+001363f8  00019e16 R_ARM_JUMP_SLOT        00000000   recvmsg
+001363fc  0001a016 R_ARM_JUMP_SLOT        00000000   fstat
+00136400  0001a116 R_ARM_JUMP_SLOT        00000000   libusb_close
+00136404  0001a216 R_ARM_JUMP_SLOT        00000000   memcpy
+00136408  0001a516 R_ARM_JUMP_SLOT        00000000   usleep
+0013640c  0001a616 R_ARM_JUMP_SLOT        00000000   DNSServiceUpdateRecord
+00136410  0001aa16 R_ARM_JUMP_SLOT        00000000   _ZN9BtService6btOpenEv
+00136414  0001ab16 R_ARM_JUMP_SLOT        00000000   strnlen
+00136418  0001ad16 R_ARM_JUMP_SLOT        00000000   DNSServiceRegister
+0013641c  0001af16 R_ARM_JUMP_SLOT        00000000   TXTRecordDeallocate
+00136420  0001b016 R_ARM_JUMP_SLOT        00000000   iap2_get_config_int
+00136424  0001b116 R_ARM_JUMP_SLOT        00000000   _ZN9BtService12btModifyNameERKNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEE
+00136428  0001b316 R_ARM_JUMP_SLOT        00000000   popen
+0013642c  0001b416 R_ARM_JUMP_SLOT        00000000   nftw
+00136430  0001b516 R_ARM_JUMP_SLOT        00000000   pclose
+00136434  0001b616 R_ARM_JUMP_SLOT        00000000   opus_encode
+00136438  0001b816 R_ARM_JUMP_SLOT        00000000   __aeabi_idivmod@GCC_3.5
+0013643c  0001bb16 R_ARM_JUMP_SLOT        00000000   localtime
+00136440  0001bd16 R_ARM_JUMP_SLOT        00000000   waitpid
+00136444  0001be16 R_ARM_JUMP_SLOT        00000000   fileno
+00136448  0001c016 R_ARM_JUMP_SLOT        00000000   DNSServiceResolve
+0013644c  0001c116 R_ARM_JUMP_SLOT        00000000   snd_pcm_hw_params_set_rate
+00136450  0001c216 R_ARM_JUMP_SLOT        00000000   writev
+00136454  0001c316 R_ARM_JUMP_SLOT        00000000   libusb_kernel_driver_active
+00136458  0001c616 R_ARM_JUMP_SLOT        00000000   _ZN9HeartBeatD1Ev
+0013645c  0001c916 R_ARM_JUMP_SLOT        00000000   snd_pcm_writei
+00136460  0001cb16 R_ARM_JUMP_SLOT        00000000   dlclose
+00136464  0001cc16 R_ARM_JUMP_SLOT        00000000   prop_set_string
+00136468  0001cd16 R_ARM_JUMP_SLOT        00000000   clock_gettime
+0013646c  0001cf16 R_ARM_JUMP_SLOT        00000000   DNSServiceCreateConnection
+00136470  0001d116 R_ARM_JUMP_SLOT        00000000   random
+00136474  0001d316 R_ARM_JUMP_SLOT        00000000   putchar
+00136478  0001d416 R_ARM_JUMP_SLOT        00000000   __aeabi_fsub@GCC_3.5
+0013647c  0001d716 R_ARM_JUMP_SLOT        00000000   __aeabi_uidiv@GCC_3.5
+00136480  0001d816 R_ARM_JUMP_SLOT        00000000   __deregister_frame_info
+00136484  0001da16 R_ARM_JUMP_SLOT        00000000   snd_pcm_hw_params_set_access
+00136488  0001db16 R_ARM_JUMP_SLOT        00000000   mkdir
+0013648c  0001dd16 R_ARM_JUMP_SLOT        00000000   _ZN12StateMachine9procStateEP9StateQEvt
+00136490  0001de16 R_ARM_JUMP_SLOT        00000000   __aeabi_idiv@GCC_3.5
+00136494  0001df16 R_ARM_JUMP_SLOT        00000000   snd_pcm_hw_params_set_period_size
+00136498  0001e016 R_ARM_JUMP_SLOT        00000000   pipe
+0013649c  0001e516 R_ARM_JUMP_SLOT        00000000   libusb_set_auto_detach_kernel_driver
+001364a0  0001e616 R_ARM_JUMP_SLOT        00000000   __cxa_rethrow@CXXABI_1.3
+001364a4  0001e716 R_ARM_JUMP_SLOT        00000000   dlsym
+001364a8  0001e816 R_ARM_JUMP_SLOT        00000000   opus_decoder_destroy
+001364ac  0001e916 R_ARM_JUMP_SLOT        00000000   timestamp_ext
+001364b0  0001eb16 R_ARM_JUMP_SLOT        00000000   snd_pcm_status_get_htstamp
+001364b4  0001ec16 R_ARM_JUMP_SLOT        00000000   pthread_cond_timedwait
+001364b8  0001ef16 R_ARM_JUMP_SLOT        00000000   kill
+001364bc  0001f316 R_ARM_JUMP_SLOT        00000000   sendto
+001364c0  0001f416 R_ARM_JUMP_SLOT        00000000   libusb_init
+001364c4  0001f516 R_ARM_JUMP_SLOT        00000000   open
+001364c8  0001f716 R_ARM_JUMP_SLOT        00000000   _ZN12ScreenRecordC1EP22IScreenRecordCallbacksiii
+001364cc  0001f816 R_ARM_JUMP_SLOT        00000000   snd_pcm_hw_params_set_channels
+001364d0  0001fa16 R_ARM_JUMP_SLOT        00000000   bind
+001364d4  0001fb16 R_ARM_JUMP_SLOT        00000000   ark_set_info_int
+001364d8  0001fc16 R_ARM_JUMP_SLOT        00000000   setsockopt
+001364dc  0001ff16 R_ARM_JUMP_SLOT        00000000   _ZNSt8ios_base4InitC1Ev@GLIBCXX_3.4
+001364e0  00020016 R_ARM_JUMP_SLOT        00000000   socket
+001364e4  00020216 R_ARM_JUMP_SLOT        00000000   ark_get_info_string
+001364e8  00020416 R_ARM_JUMP_SLOT        00000000   TXTRecordSetValue
+001364ec  00020516 R_ARM_JUMP_SLOT        00000000   snd_pcm_status
+001364f0  00020616 R_ARM_JUMP_SLOT        00000000   floor
+001364f4  00020c16 R_ARM_JUMP_SLOT        00000000   strtof
+001364f8  00020d16 R_ARM_JUMP_SLOT        00000000   access
+001364fc  00020f16 R_ARM_JUMP_SLOT        00000000   _ZN9BtService7btCloseEv
+00136500  00021016 R_ARM_JUMP_SLOT        00000000   sprintf
+00136504  00021216 R_ARM_JUMP_SLOT        00000000   _ZN8AutolockD1Ev
+00136508  00021316 R_ARM_JUMP_SLOT        00000000   __aeabi_ul2d@GCC_3.5
+0013650c  00021416 R_ARM_JUMP_SLOT        00000000   _Z21register_auto_key_cbsPvS_
+00136510  00021516 R_ARM_JUMP_SLOT        00000000   __aeabi_ui2d@GCC_3.5
+00136514  00021616 R_ARM_JUMP_SLOT        00000000   vsnprintf
+00136518  00021b16 R_ARM_JUMP_SLOT        00000000   chmod
+0013651c  00021c16 R_ARM_JUMP_SLOT        00000000   __aeabi_d2iz@GCC_3.5
+00136520  00021d16 R_ARM_JUMP_SLOT        00000000   ftello
+00136524  00021e16 R_ARM_JUMP_SLOT        00000000   fclose
+00136528  00021f16 R_ARM_JUMP_SLOT        00000000   process_is_launcher
+0013652c  00022016 R_ARM_JUMP_SLOT        00000000   feof
+00136530  00022416 R_ARM_JUMP_SLOT        00000000   __cxa_end_catch@CXXABI_1.3
+00136534  00022516 R_ARM_JUMP_SLOT        00000000   strtoul
+00136538  00022716 R_ARM_JUMP_SLOT        00000000   __gxx_personality_v0@CXXABI_1.3
+0013653c  00022a16 R_ARM_JUMP_SLOT        00000000   get_current_mono_time_ms
+00136540  00022c16 R_ARM_JUMP_SLOT        00000000   getpwnam
+00136544  00022e16 R_ARM_JUMP_SLOT        00000000   powf
+00136548  00022f16 R_ARM_JUMP_SLOT        00000000   stat
+0013654c  00023016 R_ARM_JUMP_SLOT        00000000   close
+00136550  00023216 R_ARM_JUMP_SLOT        00000000   fgets
+00136554  00023416 R_ARM_JUMP_SLOT        00000000   recvfrom
+00136558  00023616 R_ARM_JUMP_SLOT        00000000   fputc
+0013655c  00023716 R_ARM_JUMP_SLOT        00000000   strstr
+00136560  00023816 R_ARM_JUMP_SLOT        00000000   strcasestr
+00136564  00023916 R_ARM_JUMP_SLOT        00000000   __aeabi_l2d@GCC_3.5
+00136568  00023a16 R_ARM_JUMP_SLOT        00000000   realloc
+0013656c  00023b16 R_ARM_JUMP_SLOT        00000000   strchr
+00136570  00023d16 R_ARM_JUMP_SLOT        00000000   fputs
+00136574  00023f16 R_ARM_JUMP_SLOT        00000000   _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE9_M_createERjj@GLIBCXX_3.4.21
+00136578  00024016 R_ARM_JUMP_SLOT        00000000   stop_timer
+0013657c  00024216 R_ARM_JUMP_SLOT        00000000   __aeabi_dcmpgt@GCC_3.5
+00136580  00024316 R_ARM_JUMP_SLOT        00000000   opus_encoder_ctl
+00136584  00024516 R_ARM_JUMP_SLOT        00000000   _ZN9BtService8instanceEv
+00136588  00024616 R_ARM_JUMP_SLOT        00000000   _Z19register_cp_key_cbsPvS_
+0013658c  00024716 R_ARM_JUMP_SLOT        00000000   strncmp
+00136590  00024c16 R_ARM_JUMP_SLOT        00000000   DNSServiceConstructFullName
+00136594  00024e16 R_ARM_JUMP_SLOT        00000000   flock
+00136598  00024f16 R_ARM_JUMP_SLOT        00000000   pthread_join
+0013659c  00025016 R_ARM_JUMP_SLOT        00000000   if_nametoindex
+001365a0  00025116 R_ARM_JUMP_SLOT        00000000   aacDecoder_ConfigRaw
+001365a4  00025216 R_ARM_JUMP_SLOT        00000000   accept
+001365a8  00025416 R_ARM_JUMP_SLOT        00000000   send_local_message
+001365ac  00025516 R_ARM_JUMP_SLOT        00000000   __aeabi_d2f@GCC_3.5
+001365b0  00025816 R_ARM_JUMP_SLOT        00000000   libusb_get_active_config_descriptor
+001365b4  00025916 R_ARM_JUMP_SLOT        00000000   DNSServiceProcessResult
+001365b8  00025b16 R_ARM_JUMP_SLOT        00000000   mfi_get_serial_num
+001365bc  00025d16 R_ARM_JUMP_SLOT        00000000   _ZN9BtService14rescanBtStatusEv
+001365c0  00026116 R_ARM_JUMP_SLOT        00000000   prctl
+001365c4  00026316 R_ARM_JUMP_SLOT        00000000   pthread_setspecific
+001365c8  00026516 R_ARM_JUMP_SLOT        00000000   strerror
+001365cc  00026716 R_ARM_JUMP_SLOT        00000000   cfg_get_string
+001365d0  00026816 R_ARM_JUMP_SLOT        00000000   __aeabi_fcmpge@GCC_3.5
+001365d4  00026916 R_ARM_JUMP_SLOT        00000000   getenv
+001365d8  00026c16 R_ARM_JUMP_SLOT        00000000   cfg_do_set_int
+001365dc  00026e16 R_ARM_JUMP_SLOT        00000000   snd_pcm_readi
+001365e0  00026f16 R_ARM_JUMP_SLOT        00000000   libusb_set_configuration
+001365e4  00027016 R_ARM_JUMP_SLOT        00000000   getppid
+001365e8  00027116 R_ARM_JUMP_SLOT        00000000   snd_pcm_status_get_avail
+001365ec  00027216 R_ARM_JUMP_SLOT        00000000   DNSServiceRefDeallocate
+001365f0  00027416 R_ARM_JUMP_SLOT        00000000   __assert
+001365f4  00027616 R_ARM_JUMP_SLOT        00000000   _ZN5MutexC1Ev
+001365f8  00027816 R_ARM_JUMP_SLOT        00000000   _ZN9BtService11btCloseSyncEv
+001365fc  00027c16 R_ARM_JUMP_SLOT        00000000   system
+00136600  00027f16 R_ARM_JUMP_SLOT        00000000   _ZN9Semaphore2upEv
+00136604  00028116 R_ARM_JUMP_SLOT        00000000   _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE6appendEPKc@GLIBCXX_3.4.21
+00136608  00028316 R_ARM_JUMP_SLOT        00000000   snd_pcm_hw_params_free
+0013660c  00028416 R_ARM_JUMP_SLOT        00000000   _ZN8AutolockC1EP5Mutex
+00136610  00028916 R_ARM_JUMP_SLOT        00000000   ip_address_is_ready
+00136614  00028c16 R_ARM_JUMP_SLOT        00000000   _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE6appendERKS4_@GLIBCXX_3.4.21
+00136618  00028d16 R_ARM_JUMP_SLOT        00000000   DNSServiceGetAddrInfo
+0013661c  00028e16 R_ARM_JUMP_SLOT        00000000   pthread_attr_destroy
+00136620  00029016 R_ARM_JUMP_SLOT        00000000   strspn
+00136624  00029216 R_ARM_JUMP_SLOT        00000000   _ZNSt8ios_base4InitD1Ev@GLIBCXX_3.4

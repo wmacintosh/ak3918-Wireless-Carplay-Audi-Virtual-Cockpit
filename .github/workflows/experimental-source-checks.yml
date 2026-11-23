@@ -1,0 +1,152 @@
+name: Experimental source-only host checks
+
+# No firmware image is built, modified, packaged, released, or flashed here.
+# A green run does NOT establish ARM ABI or runtime safety.
+on:
+  push:
+    branches:
+      - wip/ak3918-step115-callback-tombstones
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  host-safety:
+    name: C syntax and helper diagnostics (not device-validated)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Host syntax — all combined-stream and phone-command flag combinations
+        run: |
+          for combined in 0 1; do
+            for phone in 0 1; do
+              echo "AK_ENABLE_COMBINED_CLUSTER=$combined AK_ENABLE_PHONE_CMDS=$phone"
+              cc -std=gnu11 -Wall -Wextra -Werror -fsyntax-only \
+                -DAK_ENABLE_COMBINED_CLUSTER=$combined \
+                -DAK_ENABLE_PHONE_CMDS=$phone altscreen.c
+            done
+          done
+      - name: Step 115 request tracking helper checks
+        run: python3 tests/run_step115_host.py
+      - name: Step 120/123 native request identity and stock-isolation checks
+        run: python3 tests/run_step120_host.py
+      - name: Step 121 Docker shell quoting regression test
+        run: |
+          bash -n scripts/step121_extract_native_request.sh
+          python3 tests/test_step121_shell.py
+      - name: Step 122 read-only disassembly parser and control-flow tests
+        run: |
+          python3 -m py_compile scripts/step122_native_request_paths.py tests/test_step122_paths.py
+          python3 tests/test_step122_paths.py
+      - name: Step 125 deterministic teardown-send race (expected unsafe behavior)
+        run: |
+          bash -n scripts/step125_extract_native_transport.sh
+          python3 tests/run_step125_teardown_race.py
+      - name: Step 125 combined-firmware packaging veto
+        run: |
+          python3 tests/test_step125_package_gate.py
+      - name: Step 126 read-only transport ownership audit script
+        run: python3 tests/test_step126_shell.py
+      - name: Step 127 queued completion callback audit script
+        run: python3 tests/test_step127_shell.py
+      - name: Step 128 HTTP message processor read-only audit script
+        run: python3 tests/test_step128_shell.py
+      - name: Step 128 send-admission gate concurrency checks
+        run: python3 tests/run_step128_admission_gate.py
+      - name: Step 129 archive packaging policy matrix
+        run: python3 tests/test_step129_package_policy.py
+      - name: Step 129 integrated wrapper and teardown lifecycle (host only)
+        run: python3 tests/run_step129_integrated_lifecycle.py
+      - name: Step 129 ARM/uClibc matrix script syntax (Docker matrix is local-only)
+        run: |
+          bash -n scripts/step129_validate_arm_matrix.sh
+          grep -q 'combined in 0 1' scripts/step129_validate_arm_matrix.sh
+          grep -q 'phone in 0 1' scripts/step129_validate_arm_matrix.sh
+      - name: Step 130 session switch drains old phone-command users
+        run: python3 tests/run_step130_session_transition.py
+      - name: Step 131 verified-stock native HTTP failure path
+        run: |
+          python3 tests/test_step131_http_return.py
+          python3 -m py_compile scripts/step131_verify_http_return.py
+      - name: Step 132 queue destructor read-only audit script
+        run: |
+          python3 tests/test_step132_readonly.py
+          bash -n scripts/step132_extract_queue_cancellation.sh
+      - name: Step 132 accepted-request reconnect stress
+        run: python3 tests/run_step132_callback_reconnect.py
+      - name: Step 132 pinned native queue destruction and callback control-flow evidence
+        run: python3 tests/test_step132_native_report.py
+      - name: Step 133 verified-stock queue ownership extraction and parser tests
+        run: |
+          python3 tests/test_step133_queue_ownership.py
+          bash -n scripts/step133_extract_queue_ownership.sh
+      - name: Step 133 archived native queue retain/release and allocation failure opcode checks
+        run: python3 tests/test_step133_native_queue_ownership.py
+      - name: Step 134 HTTP CF finalizer and global queue shutdown extraction gate
+        run: |
+          python3 tests/test_step134_finalizer_extraction.py
+          bash -n scripts/step134_extract_client_finalizer.sh
+      - name: Step 135 pinned stock CF class registration and read-only ELF32 data audit
+        run: |
+          python3 tests/test_step135_class_descriptor.py
+          bash -n scripts/step135_extract_cf_class_descriptor.sh
+          python3 -m py_compile scripts/step135_decode_cf_descriptor.py
+      - name: Step 136 verified-stock CF finalizer candidate and read-only function audit
+        run: |
+          python3 tests/test_step136_finalizer_gate.py
+          bash -n scripts/step136_extract_http_finalizer.sh
+      - name: Step 136 archived stock HTTPClient finalizer queue release and callback ordering
+        run: python3 tests/test_step136_native_finalizer.py
+      - name: Step 137 native dispatch allocation ambiguity evidence
+        run: python3 tests/test_step137_dispatch_ambiguity.py
+      - name: Step 137 source-derived rc==0 callback ambiguity and unsafe-reclaim negative controls
+        run: python3 tests/run_step137_accepted_send_ambiguity.py
+      - name: Step 138 stock enqueue acknowledgment observability and race contract
+        run: python3 tests/test_step138_ack_contract.py
+      - name: Step 139 stock SETUP wait baseline and callback-only tombstone preservation
+        run: python3 tests/test_step139_stock_wait_baseline.py
+      - name: Step 140 real source 110/111 request-response compatibility and host fault paths
+        run: python3 tests/run_step140_stream111_contract.py
+      - name: Step 140 exact opt-in screen hook isolation across C preprocessor modes
+        run: python3 tests/test_step140_feature_isolation.py
+      - name: Step 141 offline exact-stock and recovery archive preflight negative controls
+        run: |
+          python3 -m py_compile scripts/step141_readonly_firmware_preflight.py
+          python3 tests/test_step141_readonly_firmware_preflight.py
+      - name: Step 141 verified-stock staging recovery archive and no-overwrite regression
+        run: |
+          python3 -m py_compile scripts/step141_stage_verified_stock_inputs.py
+          python3 tests/test_step141_stock_input_staging.py
+      - name: Step 142 isolated ARM ELF builder and static auditor source safety checks
+        run: |
+          bash -n scripts/step142_isolated_elf_audit.sh
+          python3 -m py_compile scripts/step142_audit_patched_elf.py
+          python3 tests/test_step142_isolated_elf_audit.py
+      - name: Step 143 offline recovery path and ARM dynamic symbol-provider parser regressions
+        run: |
+          bash -n scripts/step143_isolated_loader_audit.sh
+          python3 -m py_compile scripts/step143_audit_loader_symbols.py scripts/step143_recovery_readiness.py
+          python3 tests/test_step143_loader_recovery.py
+      - name: Step 144 explicit read-only device identity GET collector safety and parser tests
+        run: |
+          python3 -m py_compile scripts/step144_target_identity_readonly.py
+          python3 tests/test_step144_target_identity_readonly.py
+          python3 scripts/step144_target_identity_readonly.py
+      - name: Step 145 verified-stock application archive hardware marker inventory (no device access)
+        run: |
+          python3 -m py_compile scripts/step145_stock_recovery_inventory.py
+          python3 tests/test_step145_stock_recovery_inventory.py
+          python3 scripts/step145_stock_recovery_inventory.py
+      - name: Step 147 explicit user-requested experimental installer fail-closed host tests (NO FLASH)
+        run: |
+          bash -n scripts/step147_prepare_test_archive.sh
+          python3 -m py_compile scripts/step147_validate_experimental_package.py scripts/step147_flash_experimental.py
+          python3 tests/test_step147_experimental_installer.py
+      - name: Report safety limitations
+        if: always()
+        run: |
+          echo "Source-only host tests. No target ARM ABI, device runtime, or teardown/send race verification."
+          echo "Step 125 is a historical negative control; Step 128/129 host tests cover an admission gate but do not prove device safety."
+          echo "AK_ENABLE_COMBINED_CLUSTER must remain disabled for normal stock/recovery use."

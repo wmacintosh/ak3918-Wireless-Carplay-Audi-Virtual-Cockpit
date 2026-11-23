@@ -1,0 +1,11 @@
+STEP 144 — EXACT-DEVICE IDENTITY CHECK
+NO CGI upload, POST, installer, reboot or firmware change
+PROBE: one GET to /cgi-bin/getversion.cgi at 192.168.200.1
+DEVICE platform=AK3918AN
+DEVICE custom=suding
+DEVICE system_version=20260411104900CA
+DEVICE protocol_version=20261008165915
+PASS: STEP144 READ-ONLY HTTP DEVICE IDENTITY
+UNKNOWN: exact on-device /lib/libc.so.0 and ld-uClibc.so.0 hashes
+UNKNOWN: physical board variant, serial console, bootloader recovery
+BLOCKED FOR FLASH: CGI identity is not target loader or recovery proof
