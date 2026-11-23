@@ -52,6 +52,7 @@
 #define K_CONNID                ((void *)0x000f6475u)
 #define K_UUID                  ((void *)0x000f6490u)
 #define K_LATENCYMS             ((void *)0x000f649du)
+#define K_MAXFPS                ((void *)0x000f3977u)
 
 /* Globals in sdDongle */
 #define GPEERADDR               ((void *)0x0013bca0u)
@@ -74,9 +75,13 @@
 #ifndef AK_ENABLE_COMBINED_CLUSTER
 #define AK_ENABLE_COMBINED_CLUSTER 0
 #endif
+#ifndef AK_CLUSTER_MAX_FPS
+#define AK_CLUSTER_MAX_FPS 0
+#endif
 #define STOCK_SCREEN_RESPONSE_VA 0x0002ec7cu
 #define SCREEN_STREAM_PTR_SLOT_VA 0x0013c644u
 #define SCREEN_SEND_PTR_SLOT_VA   0x0013c648u
+#define DISPLAY_HOOK_PTR_SLOT_VA  0x0013c64cu
 #define COMBINED_REQUEST_LIMIT   8
 
 typedef int (*setup_fn)(void *, void *, void **);
@@ -1799,6 +1804,20 @@ void shim_session_finalize(void *session) {
     ((session_finalize_fn)0x00066a40u)(session);
 }
 
+#if AK_ENABLE_COMBINED_CLUSTER && (AK_CLUSTER_MAX_FPS > 0)
+/* Replaces CFArrayRemoveValueAtIndex(displays, idx) at 0x3b448 for idx > 0:
+ * preserves the Virtual Cockpit display entry while capping its maxFPS. */
+void shim_tune_alt_display(void *displays, long idx) {
+    if (!displays || idx <= 0) return;
+    long n = cf_array_count(displays);
+    if (idx >= n) return;
+    void *d = cf_array_at(displays, idx);
+    if (!d || cf_get_type_id(d) != cf_dict_type_id()) return;
+    cf_dict_set_int64(d, K_MAXFPS, (int64_t)AK_CLUSTER_MAX_FPS);
+    dbg("alt display maxFPS set", (int)AK_CLUSTER_MAX_FPS);
+}
+#endif
+
 __attribute__((constructor)) static void init(void) {
     /* This word is zero-initialized by the extended RW PT_LOAD/.bss. */
     void **finalize_slot = (void **)FINALIZE_HOOK_PTR_VA;
@@ -1819,6 +1838,15 @@ __attribute__((constructor)) static void init(void) {
     } else {
         dbg("combined hook slot mismatch", -1);
     }
+#if AK_CLUSTER_MAX_FPS > 0
+    void **disp_slot = (void **)DISPLAY_HOOK_PTR_SLOT_VA;
+    if (*disp_slot == NULL) {
+        *disp_slot = (void *)&shim_tune_alt_display;
+        dbg("alt display maxFPS hook installed", (int)AK_CLUSTER_MAX_FPS);
+    } else {
+        dbg("alt display maxFPS slot mismatch", -1);
+    }
+#endif
 #endif
     void **hook_slot = (void **)SETUP_HOOK_PTR_VA;
     if (*hook_slot == (void *)SETUP_VA) {
