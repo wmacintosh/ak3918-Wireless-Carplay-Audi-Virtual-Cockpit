@@ -33,13 +33,14 @@ class FakeResp:
     def __exit__(self,*x): return False
 
 class Client:
-    def __init__(self,version=None,receipts=None):
+    def __init__(self,version=None,receipts=None,install_reply=b"success download"):
         if version is None:
             version=(b"platform:AK3918AN\ncustom:suding\n"
                      b"system_version:20260411104900CA\n"
                      b"protocol_version:20261008165915\n")
         self.version=version
         self.receipts=receipts or []
+        self.install_reply=install_reply
         self.requests=[]
     def open(self,req,timeout=None):
         self.requests.append((req.get_method(),req.full_url,req.data))
@@ -49,7 +50,7 @@ class Client:
             response=self.receipts.pop(0) if self.receipts else b"success"
             return FakeResp(response)
         if "submition.cgi" in req.full_url:
-            return FakeResp(b"install success")
+            return FakeResp(self.install_reply)
         if req.full_url.endswith("reboot.cgi"):
             return FakeResp(b"success")
         raise AssertionError("unexpected URL "+req.full_url)
@@ -87,7 +88,7 @@ class TestPackage(unittest.TestCase):
         self.assertEqual(pkg.EXPECTED["sdDongle"],
           "0e63050bdd63bebb0d14f8f751b1e920f2679da375b0498a1ace06a2ba376039")
         self.assertEqual(pkg.EXPECTED["libSdH.so"],
-          "6e70f606501354267567873ec75d291914a5f946a04be3730dc4f085575d1bd9")
+          "a5a73cffb1a8badf4488d6f5dae9a88a42f03642ebaa1193b800343a98ea7a87")
         self.assertEqual(pkg.EXPECTED_ORDER,[
           "libSdAuto.so","libSdCommon.so","libSdSampleRate.so",
           "libSdUtils.so","sdDongle","libSdH.so"])
@@ -220,6 +221,16 @@ class TestInstaller(unittest.TestCase):
             with self.assertRaisesRegex(ValueError,"not accepted"):
                 flash.install(client,b"x"*24000)
         self.assertEqual(len(client.requests),3)
+
+    def test_install_cgi_error_or_empty_response_refuses_reboot(self):
+        for bad_reply in (b"", b"error", b"install failed", b"checksum mismatch"):
+            client=Client(receipts=[b"success",b"success",b"file check success"],
+                          install_reply=bad_reply)
+            with redirect_stdout(io.StringIO()):
+                with self.assertRaisesRegex(ValueError,"did not confirm success"):
+                    flash.install(client,b"x"*24000)
+            self.assertEqual(len(client.requests),4)
+            self.assertTrue(all("reboot.cgi" not in x[1] for x in client.requests))
 
     def test_no_legacy_archive_selected(self):
         code=(ROOT/"scripts/step147_flash_experimental.py").read_text()
