@@ -1279,14 +1279,19 @@ static void *sink_thread(void *arg) {
                     idr_len = 0;
                     dbg("alt idr after frames", wait_idr);
                 } else if (!got_idr && idr_body && idr_len > 0) {
-                    if (send_to_car(ctx, 0, idr_body, idr_len, &failed_stage) == 0) {
+                    /* send_to_car encrypts its payload buffer in place; always
+                     * discard the cached buffer after the attempt so a retry
+                     * can never double-encrypt already-encrypted bytes. */
+                    int rrc = send_to_car(ctx, 0, idr_body, idr_len, &failed_stage);
+                    unsigned replayed_len = idr_len;
+                    free(idr_body);
+                    idr_body = NULL;
+                    idr_len = 0;
+                    if (rrc == 0) {
                         pushed++;
                         got_idr = 1;
                         send_failed = 0;
-                        dbg("alt replayed cached idr", (int)idr_len);
-                        free(idr_body);
-                        idr_body = NULL;
-                        idr_len = 0;
+                        dbg("alt replayed cached idr", (int)replayed_len);
                     } else {
                         cfg_sent = 0;
                         got_idr = 0;

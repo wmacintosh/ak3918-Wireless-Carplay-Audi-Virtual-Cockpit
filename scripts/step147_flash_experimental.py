@@ -112,8 +112,10 @@ def install(client,blob):
     result=get_text(client,f"http://{HOST}/cgi-bin/submition.cgi?filename={RNAME}&",
                     timeout=45)
     print("INSTALL CGI RESPONSE:",result[:300])
-    require(result,"empty install response; cannot establish outcome")
-    print("INSTALL REQUEST SENT: a valid response is not proof firmware can boot")
+    lower=result.lower()
+    require(bool(result) and "success" in lower and "error" not in lower and "fail" not in lower,
+            f"install CGI did not confirm success; refusing reboot: {result[:160]}")
+    print("INSTALL REQUEST CONFIRMED: a valid response is not proof firmware can boot")
     try:
         result=get_text(client,f"http://{HOST}/cgi-bin/reboot.cgi",timeout=5)
         print("REBOOT CGI RESPONSE:",result[:120])

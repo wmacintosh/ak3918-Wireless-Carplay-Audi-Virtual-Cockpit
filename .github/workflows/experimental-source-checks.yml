@@ -144,6 +144,8 @@ jobs:
           bash -n scripts/step147_prepare_test_archive.sh
           python3 -m py_compile scripts/step147_validate_experimental_package.py scripts/step147_flash_experimental.py
           python3 tests/test_step147_experimental_installer.py
+      - name: Step 150 send_frame_all partial-write and error regression tests
+        run: python3 tests/run_step150_send_frame_all.py
       - name: Report safety limitations
         if: always()
         run: |

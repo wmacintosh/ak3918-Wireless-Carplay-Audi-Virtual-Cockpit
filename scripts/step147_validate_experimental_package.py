@@ -18,7 +18,7 @@ EXPECTED = {
     "libSdSampleRate.so": "6e1cfdf3a91fdee5bf0a126c122c06ea84fcf1fb4741986b02f47f9ea0de7e14",
     "libSdUtils.so": "6872f533caad8e59d5fdbc3f48e4ef14e315479710f2378b9dea01383fbf876a",
     "sdDongle": "0e63050bdd63bebb0d14f8f751b1e920f2679da375b0498a1ace06a2ba376039",
-    "libSdH.so": "6e70f606501354267567873ec75d291914a5f946a04be3730dc4f085575d1bd9",
+    "libSdH.so": "a5a73cffb1a8badf4488d6f5dae9a88a42f03642ebaa1193b800343a98ea7a87",
 }
 EXPECTED_ORDER = list(EXPECTED)
 EXPECTED_BRANCH = "wip/ak3918-step115-callback-tombstones"
