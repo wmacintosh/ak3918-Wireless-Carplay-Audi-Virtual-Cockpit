@@ -21,12 +21,16 @@ FINALIZER_CLASSNAME_VA = 0x001028B4
 # modified, and the detached cluster HTTP path has been removed from the C shim.
 ENABLE_COMBINED_CLUSTER = os.environ.get("AK_ENABLE_COMBINED_CLUSTER") == "1"
 ENABLE_PHONE_CMDS = os.environ.get("AK_ENABLE_PHONE_CMDS") == "1"
+CLUSTER_MAX_FPS = int(os.environ.get("AK_CLUSTER_MAX_FPS", "0"))
 STREAM_HOOK_BL_VA = 0x0002FADC
 STREAM_HOOK_OLD_BL = 0xEB018DE6  # stock BL 0x9327C
 SEND_HOOK_BL_VA = 0x0002FBB0
 SEND_HOOK_OLD_BL = 0xEB01DB6F    # stock BL 0xA6974
+DISPLAY_HOOK_BL_VA = 0x0003B448
+DISPLAY_HOOK_OLD_BL = 0xEB011EDD  # stock BL 0x82FC4 (CFArrayRemoveValueAtIndex)
 STREAM_HOOK_PTR_VA = 0x0013C644
 SEND_HOOK_PTR_VA = 0x0013C648
+DISPLAY_HOOK_PTR_VA = 0x0013C64C
 
 ALTSCREEN_PATCHES = [
     (0x03b43c, 0x0a000002, 0xea000002, "nostrip: keep all displays in /info"),
@@ -81,6 +85,7 @@ def build_shim(out):
         "-mcpu=arm926ej-s", "-mfloat-abi=soft", "-shared", "-fPIC", "-Os",
         "-DAK_ENABLE_COMBINED_CLUSTER=" + ("1" if ENABLE_COMBINED_CLUSTER else "0"),
         "-DAK_ENABLE_PHONE_CMDS=" + ("1" if ENABLE_PHONE_CMDS else "0"),
+        "-DAK_CLUSTER_MAX_FPS=" + str(CLUSTER_MAX_FPS),
         "-fno-unwind-tables", "-fno-asynchronous-unwind-tables",
         "-Wl,-soname," + SHIM_SO,
         "-o", out, SHIM_C, "-lpthread",
@@ -167,8 +172,12 @@ def patch_sddongle(src, dst):
     if cfl != b"\x56\x07\x01\x00\xff\xff\xff\x7faltScreen\x00":
         raise SystemExit(f"altScreen CFL not at file 0xe34ea: {cfl!r}")
 
-    # Apply the 5 altScreen patches
+    # Apply the 5 altScreen patches (when capping alt display maxFPS, keep
+    # 0x3b43c as beq so idx >= 1 enters our hooked 0x3b448 tuner).
     for va, old, new, what in ALTSCREEN_PATCHES:
+        if va == 0x03b43c and ENABLE_COMBINED_CLUSTER and CLUSTER_MAX_FPS > 0:
+            print(f"keeping @{va:#x} as beq for maxFPS={CLUSTER_MAX_FPS} hook @0x3b448")
+            continue
         po = va - BASE_VA
         w = struct.unpack_from("<I", d, po)[0]
         if w == new:
@@ -276,7 +285,7 @@ def patch_sddongle(src, dst):
     rw_po, rw_va, rw_filesz, rw_memsz, rw_align = rw_headers[0]
     if (rw_va, rw_filesz, rw_memsz, rw_align) != (0x133FEC, 0x66C4, 0x8654, 0x10000):
         raise SystemExit("unexpected writable LOAD layout; refusing extension")
-    extension = 12 if ENABLE_COMBINED_CLUSTER else 4
+    extension = (16 if CLUSTER_MAX_FPS > 0 else 12) if ENABLE_COMBINED_CLUSTER else 4
     if rw_va + rw_memsz != FINALIZER_PTR_SLOT_VA or FINALIZER_PTR_SLOT_VA + extension > 0x13D000:
         raise SystemExit("cannot safely reserve hook pointers")
 
@@ -318,6 +327,9 @@ def patch_sddongle(src, dst):
                             STREAM_HOOK_PTR_VA, "combined stream construction")
         install_screen_hook(SEND_HOOK_BL_VA, SEND_HOOK_OLD_BL,
                             SEND_HOOK_PTR_VA, "combined screen HTTP send")
+        if CLUSTER_MAX_FPS > 0:
+            install_screen_hook(DISPLAY_HOOK_BL_VA, DISPLAY_HOOK_OLD_BL,
+                                DISPLAY_HOOK_PTR_VA, f"alt display maxFPS={CLUSTER_MAX_FPS}")
 
     open(dst, "wb").write(d)
     print("sdDongle md5", hashlib.md5(d).hexdigest())
