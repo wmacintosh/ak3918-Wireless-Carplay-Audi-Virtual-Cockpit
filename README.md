@@ -1,11 +1,14 @@
 # Wireless CarPlay on the Audi Virtual Cockpit (AK3918AN)
 
-> **Experimental branch warning — 2026-11-21:** This branch contains a newer, **not device-validated** ARM/AK3918 port and separate combined stream-111 source changes. The author's historical success statement and downloadable installer below describe the **older archive on `main`**, not proof that this WIP revision is safe to flash. The legacy stock and recovery packages are unchanged. Do not package or install WIP firmware without a separate hardware/recovery review. See [Step 129 release and safety status](docs/STEP129_RELEASE_AND_SAFETY_STATUS.md).
-
-
 I ordered a dongle to try [OMKE’s wireless CarPlay mod](https://github.com/OMKE/wireless-carplay-virtual-cockpit) and ended up with the wrong one. His is a Suding AX1800M. Mine turned out to be an AK3918AN. I already had the LukaDev mod working over USB, so I used OMKE’s code to get the wireless dongle working with my car.
 
 The first builds kept dropping CarPlay. With the build in this repo, the MMI stayed connected and navigation showed up on the Virtual Cockpit. I’ve tested it on my own setup.
+
+## Project Status & Hardware Limitations
+
+- **What works**: Wireless CarPlay on both the Audi Virtual Cockpit (`altScreen` / stream 111) and center MMI (stream 110) runs stably on real hardware (2018 Audi A5, Harman MHI2Q) with zero crashes or disconnects, using cached IDR replay, `TCP_NODELAY`, scatter-gather `sendmsg`, and configurable cluster FPS (`AK_CLUSTER_MAX_FPS`, tested at 30–50 fps).
+- **AK3918AN hardware limitations**: The Suding AK3918AN is a single-core 400 MHz ARM926EJ-S with no hardware crypto acceleration. Dual-screen software ChaCha20 + AES-CTR + audio saturates the CPU, resulting in choppy Virtual Cockpit video and audio stutter even when capped at 30–50 fps with 500 ms audio latency.
+- **Moving on to Carlinkit TBox**: Wrapping up AK3918AN development here and moving on to try the same Virtual Cockpit wireless CarPlay mod on a **Carlinkit TBox (`CPC200-TboxPlus`)** (8-core Snapdragon `arm64-v8a` running Suding's Android CarPlay stack `SpeedPlay` / `sdcarplaysvc`), which has the CPU headroom for smooth dual-screen + audio.
 
 ## My setup
 
